@@ -1,0 +1,4 @@
+preprocessed="false" #Code related to joining multiple files on various fields, dropping column/rows, null value treatment, cast type
+feature_engineering="false" #Code related transformation, mapping, scaling, new feature creation
+feature_selection="false" #Select which features are valuable for our project. RFE, VIF, Lasso etc., list of features with their importance.
+
