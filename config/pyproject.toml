@@ -1,0 +1,6 @@
+[project]
+name = "ai_research_template"
+version = "0.1.0"
+
+[tool.setuptools]
+packages = ["src"]

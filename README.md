@@ -1,7 +1,5 @@
-Detepsy
+AI Research Template
 ==============================
-
-Detepsy repo
 
 Project Organization
 ------------

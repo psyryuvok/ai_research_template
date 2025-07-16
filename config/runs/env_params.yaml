@@ -1,0 +1,28 @@
+name: name
+repeatability:
+  seed: 81
+  PYTHONHASHSEED: "0"
+security:
+  credentials_path: "credentials.yaml"
+files:
+  data_path: ""
+data:
+  batch_size: 8
+model_seizure:
+  optuna_parameters:
+    study_name: study
+    model_names: ["ltsm_dense", "conv_dense", "conv_ltsm_dense"]
+    learning_rate: 
+      - !!float 1e-7
+      - !!float 1e-4
+    num_units: [1,6]
+    dropout_rate:
+      - !!float 0.001
+      - !!float 0.999 
+    batch_size: [2,64]
+    optuna_trials_number: 3
+  epochs: 3
+github:
+  MY_GOOGLE_DRIVE_PATH: ""  # path to your project on Google Drive
+  GIT_USERNAME: ""  # username of the user who has the repo
+  GIT_REPOSITORY: ""
