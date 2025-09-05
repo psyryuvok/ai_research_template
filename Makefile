@@ -1,30 +1,65 @@
-.PHONY: clean data lint requirements sync_data_to_s3 sync_data_from_s3
+.PHONY: clean data lint format install setup tools deploy_vis stop_vis
 
 #################################################################################
 # GLOBALS                                                                       #
 #################################################################################
 
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-BUCKET = [OPTIONAL] your-bucket-for-syncing-data (do not include 's3://')
+YAML_PARAMS_FILE := ./config/runs/env_params.yaml
+VENV_PATH := ./.venv
 PROFILE = default
 PROJECT_NAME = Detepsy
-PYTHON_INTERPRETER = python3
-
-ifeq (,$(shell which conda))
-HAS_CONDA=False
-else
-HAS_CONDA=True
-endif
+PYTHON_VERSION = 3.11
+PYTHON_INTERPRETER := $(VENV_PATH)/bin/python
+DEV_TOOLS_FROM_PYPROJECT := $(shell $(PYTHON_INTERPRETER) -c "import tomllib; f=open('pyproject.toml', 'rb'); data=tomllib.load(f); print(' '.join(data.get('tool', {}).get('project-tools', {}).get('pipx_packages', [])))")
+JUPYTER_PLUGINS := jupyterlab-optuna
+COMPOSE_FILE := ./CI-CD/mlops_compose_stack.yaml
 
 #################################################################################
 # COMMANDS                                                                      #
 #################################################################################
 
-## Install Python Dependencies
-requirements: test_environment
-	$(PYTHON_INTERPRETER) -m pip install -U pip setuptools wheel
-	$(PYTHON_INTERPRETER) -m pip install -r requirements.txt
+setup: install ## Set up the full development environment
+	@echo "✅ Setup complete. Activate the venv with: source .venv/bin/activate"
 
+## Install requirements with uv
+install: $(PYTHON_INTERPRETER) ## Install/sync project dependencies using uv
+	@echo "-> Compiling and syncing dependencies with uv..."
+	@uv pip compile pyproject.toml --extra dev -o requirements.txt
+	@uv pip sync requirements.txt
+	@uv pip install -e .
+
+## Install pipx tools
+tools: $(PYTHON_INTERPRETER)
+	@echo "-> Installing development tools from pyproject.toml with pipx..."
+	@echo "   Found tools: $(DEV_TOOLS_FROM_PYPROJECT)"
+	@for tool_spec in $(DEV_TOOLS_FROM_PYPROJECT); do \
+		# Extract the clean package name (e.g., 'ruff' from 'ruff==0.5.0')  \
+		# The double '$$' is needed to escape the '$' for Make, so the shell sees '$tool_spec' \
+		tool_name=$$(echo "$$tool_spec" | cut -d'=' -f1 | cut -d'[' -f1); \
+		\
+		# Check if the tool is already in the list. grep -q is silent. \
+		if pipx list | grep -q -E "package\s+$$tool_name\s+"; then \
+			echo "   -> '$$tool_name' is already installed. Skipping."; \
+		else \
+			echo "   -> Installing '$$tool_spec' with pipx..."; \
+			pipx install "$$tool_spec"; \
+		fi \
+	done
+	# --- After the loop, handle special injections ---
+	@echo "-> Checking for plugins to inject..."
+	@if pipx list | grep -q -E "package\s+jupyterlab\s+"; then \
+		if ! pipx list --include-injected | grep -q -w "jupyterlab-optuna"; then \
+			echo "   -> JupyterLab is installed, but plugin is missing. Injecting: $(JUPYTER_PLUGINS)"; \
+			pipx inject jupyterlab $(JUPYTER_PLUGINS); \
+		else \
+			echo "   -> JupyterLab and jupyterlab-optuna plugin are already installed. Skipping."; \
+		fi \
+	else \
+		echo "   -> JupyterLab not found in tool list. Skipping plugin injection."; \
+	fi
+	@echo "-> Tool check complete."
+#REVIEW - In pipx list, we are not seeing anything about jupyterlab-optuna. Also it is always injecting
 ## Make Dataset
 data: requirements
 	$(PYTHON_INTERPRETER) src/data/make_dataset.py data/raw data/processed
@@ -34,53 +69,65 @@ clean:
 	find . -type f -name "*.py[co]" -delete
 	find . -type d -name "__pycache__" -delete
 
-## Lint using flake8
+#################################################################################
+# Development Tasks                                                                       #
+#################################################################################
+
+## Lint using mypy and flake8
 lint:
+	@echo "-> Running linter..."
+#@ruff check .
+	mypy .
 	flake8 src
+## Format using black
+format:
+	@echo "-> Running formatters..."
+#@ruff format .
+	black .
 
-## Upload Data to S3
-sync_data_to_s3:
-ifeq (default,$(PROFILE))
-	aws s3 sync data/ s3://$(BUCKET)/data/
-else
-	aws s3 sync data/ s3://$(BUCKET)/data/ --profile $(PROFILE)
-endif
+## Deploy visualization servers: tensorboard, optuna, mlflow
+deploy_vis:
+	$(SETUP_DOCKER_ENV) \
+	\
+	echo "-> Starting Docker Compose with services..."; \
+	docker compose -f $(COMPOSE_FILE) up -d
 
-## Download Data from S3
-sync_data_from_s3:
-ifeq (default,$(PROFILE))
-	aws s3 sync s3://$(BUCKET)/data/ data/
-else
-	aws s3 sync s3://$(BUCKET)/data/ data/ --profile $(PROFILE)
-endif
+## Stop the visualization servers
+stop_vis:
+	$(SETUP_DOCKER_ENV) \
+	\
+	echo "-> Stopping Docker Compose with services..."; \
+	docker compose -f $(COMPOSE_FILE) down
 
-## Set up python interpreter environment
-create_environment:
-ifeq (True,$(HAS_CONDA))
-		@echo ">>> Detected conda, creating conda environment."
-ifeq (3,$(findstring 3,$(PYTHON_INTERPRETER)))
-	conda create --name $(PROJECT_NAME) python=3
-else
-	conda create --name $(PROJECT_NAME) python=2.7
-endif
-		@echo ">>> New conda env created. Activate with:\nsource activate $(PROJECT_NAME)"
-else
-	$(PYTHON_INTERPRETER) -m pip install -q virtualenv virtualenvwrapper
-	@echo ">>> Installing virtualenvwrapper if not already installed.\nMake sure the following lines are in shell startup file\n\
-	export WORKON_HOME=$$HOME/.virtualenvs\nexport PROJECT_HOME=$$HOME/Devel\nsource /usr/local/bin/virtualenvwrapper.sh\n"
-	@bash -c "source `which virtualenvwrapper.sh`;mkvirtualenv $(PROJECT_NAME) --python=$(PYTHON_INTERPRETER)"
-	@echo ">>> New virtualenv created. Activate with:\nworkon $(PROJECT_NAME)"
-endif
-
-## Test python environment is setup correctly
-test_environment:
-	$(PYTHON_INTERPRETER) test_environment.py
+# This is the new rule that creates the venv.
+# It is a FILE-BASED rule, not a phony one.
+$(PYTHON_INTERPRETER):
+	@echo "-> Virtual environment not found. Creating..."
+	@uv venv --python $(PYTHON_VERSION) $(VENV_PATH)
 
 #################################################################################
 # PROJECT RULES                                                                 #
 #################################################################################
 
 
+
+#################################################################################
+# Scripts                                                                       #
+#################################################################################
+
+define SETUP_DOCKER_ENV
+	@RUN_NAME=$$(yq --raw-output '.name' $(YAML_PARAMS_FILE)); \
+	STUDY_NAME=$$(yq --raw-output '.model_seizure.optuna_parameters.study_name' $(YAML_PARAMS_FILE)); \
+	\
+	echo "   -> Name from YAML:       '$$RUN_NAME'"; \
+	echo "   -> Study Name from YAML:   '$$STUDY_NAME'"; \
+	\
+	export OPTUNA_LOG_DIR="$(PROJECT_DIR)/$$RUN_NAME.db"; \
+	export TENSORBOARD_LOG_DIR="$(PROJECT_DIR)/reports/tensorboard/$$RUN_NAME/logs_optuna/$$STUDY_NAME"; \
+	\
+	echo "      OPTUNA_LOG_DIR    = $$OPTUNA_LOG_DIR"; \
+	echo "      TENSORBOARD_LOG_DIR = $$TENSORBOARD_LOG_DIR"; 
+endef
 
 #################################################################################
 # Self Documenting Commands                                                     #
