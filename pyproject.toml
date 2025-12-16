@@ -3,7 +3,7 @@ name = "ai_research_template"
 version = "0.1.0"
 readme = "README.md"
 description = "Is a template for AI research."
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 keywords = ["template"]
 
 dependencies = [
@@ -15,9 +15,10 @@ dependencies = [
     "tensorflow[and-cuda]",
     "sphinx",
     "pytest",
+    "pytest-asyncio",
     "coverage",
     "python-dotenv",
-    "tflite-runtime",
+    #"tflite-runtime",
     "onnxruntime",
     "tf2onnx",
     "tensorflow_model_optimization",
@@ -33,9 +34,10 @@ dependencies = [
     "dash",
     "dash-bootstrap-components",
     "pydot",
-    "tensorflow-addons",
-    "pyedflib"
-
+    #"tensorflow-addons",
+    "pyedflib",
+    "pydantic_settings",
+    "mlflow"
 ]
 
 
@@ -65,7 +67,7 @@ ai = [
 
 
 ]
-
+ 
 [tool.project-tools]
 pipx_packages = [
     "black",
@@ -75,11 +77,15 @@ pipx_packages = [
     "isort",
     "optuna-dashboard",
     "jupyterlab",
-    "yq"
+    "yq",
+    "autopep8",
+    "ruff",
+    "pytest",
+    "cookiecutter-data-science"
     ]
 
 [tool.flake8]
-max-line-length = 79
+max-line-length = 159
 max-complexity = 10
 exclude = [
     # No need to traverse our git directory
@@ -88,8 +94,25 @@ exclude = [
     "__pycache__"
 ]
 
+[tool.black]
+line-length = 159
 
+[[tool.mypy.overrides]]
+module = ["requests.*"]
+ignore_missing_imports = true
 
+[tool.ruff]
+line-length = 159
+[tool.ruff.lint.pycodestyle]
+max-line-length = 159
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:"
+]
 
 
 

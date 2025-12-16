@@ -4,12 +4,14 @@
 # GLOBALS                                                                       #
 #################################################################################
 
+PACKAGE_NAME := src
+
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 YAML_PARAMS_FILE := ./config/runs/env_params.yaml
 VENV_PATH := ./.venv
 PROFILE = default
 PROJECT_NAME = Detepsy
-PYTHON_VERSION = 3.11
+PYTHON_VERSION = 3.12
 PYTHON_INTERPRETER := $(VENV_PATH)/bin/python
 DEV_TOOLS_FROM_PYPROJECT := $(shell $(PYTHON_INTERPRETER) -c "import tomllib; f=open('pyproject.toml', 'rb'); data=tomllib.load(f); print(' '.join(data.get('tool', {}).get('project-tools', {}).get('pipx_packages', [])))")
 JUPYTER_PLUGINS := jupyterlab-optuna
@@ -19,7 +21,8 @@ COMPOSE_FILE := ./CI-CD/mlops_compose_stack.yaml
 # COMMANDS                                                                      #
 #################################################################################
 
-setup: install ## Set up the full development environment
+## Set up the full development environment
+setup: install 
 	@echo "✅ Setup complete. Activate the venv with: source .venv/bin/activate"
 
 ## Install requirements with uv
@@ -47,6 +50,7 @@ tools: $(PYTHON_INTERPRETER)
 		fi \
 	done
 	# --- After the loop, handle special injections ---
+
 	@echo "-> Checking for plugins to inject..."
 	@if pipx list | grep -q -E "package\s+jupyterlab\s+"; then \
 		if ! pipx list --include-injected | grep -q -w "jupyterlab-optuna"; then \
@@ -58,6 +62,18 @@ tools: $(PYTHON_INTERPRETER)
 	else \
 		echo "   -> JupyterLab not found in tool list. Skipping plugin injection."; \
 	fi
+
+	@if pipx list | grep -q -E "package\s+pytest\s+"; then \
+		if ! pipx list --include-injected | grep -q -w "pytest-cov"; then \
+			echo "   -> Pytest is installed via pipx, but coverage plugin is missing. Injecting: pytest-cov"; \
+			pipx inject pytest pytest-cov; \
+		else \
+			echo "   -> Pytest and pytest-cov are already installed. Skipping."; \
+		fi \
+	else \
+		echo "   -> Pytest not found in pipx tool list. Skipping plugin injection."; \
+	fi
+
 	@echo "-> Tool check complete."
 #REVIEW - In pipx list, we are not seeing anything about jupyterlab-optuna. Also it is always injecting
 ## Make Dataset
@@ -76,14 +92,15 @@ clean:
 ## Lint using mypy and flake8
 lint:
 	@echo "-> Running linter..."
-#@ruff check .
-	mypy .
-	flake8 src
+	ruff check .
+	mypy --python-executable $(PYTHON_INTERPRETER) -p $(PACKAGE_NAME)
+#flake8 src
 ## Format using black
 format:
 	@echo "-> Running formatters..."
-#@ruff format .
-	black .
+	ruff format .
+#black .
+#isort .
 
 ## Deploy visualization servers: tensorboard, optuna, mlflow
 deploy_vis:
