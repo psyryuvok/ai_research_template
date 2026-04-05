@@ -1,0 +1,46 @@
+data:
+  stride_size: 9
+  time_size: 6
+  type_seizure_extract:
+  - false_alarms
+db:
+  data: d
+  password: p
+  port: not_a_number
+  username: u
+files:
+  data_path: ''
+github:
+  GIT_REPOSITORY: ''
+  GIT_USERNAME: ''
+  MY_GOOGLE_DRIVE_PATH: ''
+model:
+  early_stop: 5
+  model_name: test
+model_seizure:
+  epochs: 1
+  optuna_parameters:
+    batch_size:
+    - 1
+    - 2
+    dropout_rate:
+    - 0.1
+    - 0.2
+    learning_rate:
+    - 0.1
+    - 0.2
+    model_name:
+    - m1
+    n_trials: 1
+    num_units:
+    - 1
+    - 2
+    study_name: s
+    timeout: 1
+name: YAML App
+output:
+  generate_files: false
+  generate_statistics: false
+  save_images: false
+security:
+  credentials_path: ''

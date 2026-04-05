@@ -6,8 +6,7 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 from dotenv import dotenv_values
 
-
-from src.utils.logging_config import get_file_logger
+from src.utils.logging_config import get_file_logger, get_safe_path
 
 logger = get_file_logger(__name__, "normal")
 
@@ -35,6 +34,7 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
 
 
 # --- Sub-Models ---
+
 class DatabaseConfig(BaseModel):
     host: str = "localhost"
     port: int = 5432
@@ -48,12 +48,73 @@ class FeatureFlags(BaseModel):
     beta_access: bool = False
 
 
+class RepeatabilityConfig(BaseModel):
+    seed: int = 42
+    PYTHONHASHSEED: int = 0
+
+
+class SecurityConfig(BaseModel):
+    credentials_path: str = ""
+
+
+class FilesConfig(BaseModel):
+    data_path: str
+
+
+class DataConfig(BaseModel):
+    stride_size: int
+    time_size: int
+    type_seizure_extract: list[str]
+
+
+class ModelConfig(BaseModel):
+    model_name: str
+    early_stop: int
+
+
+class GithubConfig(BaseModel):
+    MY_GOOGLE_DRIVE_PATH: str
+    GIT_USERNAME: str
+    GIT_REPOSITORY: str
+
+
+class OutputConfig(BaseModel):
+    generate_files: bool
+    generate_statistics: bool
+    save_images: bool
+
+
+class OptunaParameters(BaseModel):
+    study_name: str
+    model_name: list[str]
+    batch_size: list[int]
+    num_units: list[int]
+    dropout_rate: list[float]
+    learning_rate: list[float]
+    n_trials: int
+    timeout: int
+
+
+class ModelSeizureConfig(BaseModel):
+    optuna_parameters: OptunaParameters
+    epochs: int
+
+
 # --- The Main Settings Class ---
 class Settings(BaseSettings):
-    app_name: str = "Default App"
+    name: str
+    security: SecurityConfig
+    files: FilesConfig
+    data: DataConfig
+    model: ModelConfig
+    model_seizure: ModelSeizureConfig
+    github: GithubConfig
+    output: OutputConfig
+    repeatability: RepeatabilityConfig = Field(default_factory=RepeatabilityConfig)
     db: DatabaseConfig
     features: FeatureFlags = Field(default_factory=FeatureFlags)
     db_data: str | None = None
+    generated: dict | None = None
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",
@@ -74,8 +135,8 @@ class Settings(BaseSettings):
         # 3. Check .env file
         # 4. Fallback to default
 
-        target_file = init_settings.init_kwargs.get("_yaml_file") or os.environ.get("ENV_PARAMS") or dotenv_values(".env").get("ENV_PARAMS") or "config.yaml"
-
+        target_file = init_settings.init_kwargs.get("_yaml_file") or os.environ.get("ENV_PARAMS") or dotenv_values(".env").get("ENV_PARAMS") or "env_params.yaml"
+        target_file = get_safe_path(target_file)
         return (
             init_settings,
             env_settings,

@@ -9,15 +9,16 @@ import numpy as np
 import tensorflow as tf
 import yaml
 from src.utils.logging_config import get_file_logger
+from src.utils.settings import RepeatabilityConfig
 
 logger = get_file_logger(__name__, "normal")
 
 
-def disable_randomness(repeatability):
-    os.environ["PYTHONHASHSEED"] = repeatability["PYTHONHASHSEED"]
-    np.random.seed(repeatability["seed"])
-    random.seed(repeatability["seed"])
-    tf.random.set_seed(repeatability["seed"])
+def disable_randomness(repeatability: RepeatabilityConfig):
+    os.environ['PYTHONHASHSEED'] = str(repeatability.PYTHONHASHSEED)
+    np.random.seed(repeatability.PYTHONHASHSEED)
+    random.seed(repeatability.PYTHONHASHSEED)
+    tf.random.set_seed(repeatability.PYTHONHASHSEED)
 
 
 def get_or_create_mflow_experiment(experiment_name):
@@ -35,10 +36,14 @@ def get_or_create_mflow_experiment(experiment_name):
     - str: ID of the existing or newly created MLflow experiment.
     """
 
+    db_path = os.path.abspath("reports")
+    mlflow.set_tracking_uri(f"sqlite:///{db_path}/mlflow.db")
+    artifact_location = f"file://{db_path}/mlartifacts"
+
     if experiment := mlflow.get_experiment_by_name(experiment_name):
         return experiment.experiment_id
     else:
-        return mlflow.create_experiment(experiment_name)
+        return mlflow.create_experiment(experiment_name, artifact_location=artifact_location)
 
 
 with open("config/runs/env_params.yaml", "r") as get_config_yaml:  # "../../config/runs/env_params.yaml"

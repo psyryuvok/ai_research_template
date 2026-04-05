@@ -25,4 +25,17 @@ def configure_test_logging():
     # Yield control to the tests
     yield
 
-    # (Optional) Teardown code here if needed
+    # Teardown: Properly flush and close CloudLoggingHandler to avoid threading issues
+    import logging
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers:
+        if hasattr(handler, 'flush'):
+            try:
+                handler.flush()  # Try to send pending logs
+            except Exception:
+                pass  # Ignore flush errors
+        if hasattr(handler, 'close'):
+            try:
+                handler.close()
+            except Exception:
+                pass  # Ignore close errors

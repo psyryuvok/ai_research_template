@@ -28,9 +28,9 @@ setup: install
 ## Install requirements with uv
 install: $(PYTHON_INTERPRETER) ## Install/sync project dependencies using uv
 	@echo "-> Compiling and syncing dependencies with uv..."
-	@uv pip compile pyproject.toml --extra dev -o requirements.txt
-	@uv pip sync requirements.txt
-	@uv pip install -e .
+	@uv pip compile pyproject.toml --extra dev -o requirements.txt --python-version $(PYTHON_VERSION)
+	@uv pip sync requirements.txt --python $(PYTHON_INTERPRETER)
+	@uv pip install -e . --python $(PYTHON_INTERPRETER)
 
 ## Install pipx tools
 tools: $(PYTHON_INTERPRETER)
