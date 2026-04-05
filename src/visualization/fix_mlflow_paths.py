@@ -8,8 +8,8 @@ def rewrite_mlflow_paths(db_path, new_artifact_root):
     from absolute paths to a container-agnostic path.
     """
 
-    print(f"Backing up database to {DB_PATH}.backup")
-    shutil.copy2(DB_PATH, f"{DB_PATH}.backup")
+    print(f"Backing up database to {db_path}.backup")
+    shutil.copy2(db_path, f"{db_path}.backup")
 
     if not os.path.exists(db_path):
         print(f"Error: Database not found at {db_path}")

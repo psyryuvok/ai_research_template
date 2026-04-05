@@ -1,5 +1,6 @@
 import os
 import random
+import shutil
 import time
 import asyncio
 from functools import wraps
@@ -37,7 +38,16 @@ def get_or_create_mflow_experiment(experiment_name):
     """
 
     db_path = os.path.abspath("reports")
-    mlflow.set_tracking_uri(f"sqlite:///{db_path}/mlflow.db")
+    db_file = os.path.join(db_path, "mlflow.db")
+    backup_file = f"{db_file}.backup"
+
+    # Restore from backup if it exists to ensure local training uses absolute paths
+    if os.path.exists(backup_file):
+        logger.info("Restoring MLflow DB from backup for local training.")
+        shutil.copy2(backup_file, db_file)
+        os.remove(backup_file)
+
+    mlflow.set_tracking_uri(f"sqlite:///{db_file}")
     artifact_location = f"file://{db_path}/mlartifacts"
 
     if experiment := mlflow.get_experiment_by_name(experiment_name):
