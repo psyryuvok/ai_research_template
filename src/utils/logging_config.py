@@ -1,17 +1,18 @@
-import logging
-import sys
+import contextvars
 import json
-import re
+import logging
 import os
+import re
+import sys
 from datetime import datetime, timezone
+from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from typing import Any, override
-from logging.handlers import TimedRotatingFileHandler
-
 
 try:
     import google.cloud.logging
     from google.cloud.logging.handlers import CloudLoggingHandler
+
     GCP_LIB_AVAILABLE = True
 except (ImportError, Exception):
     GCP_LIB_AVAILABLE = False
@@ -21,11 +22,27 @@ IS_CLOUD_RUN = os.environ.get("K_SERVICE") is not None
 # Detect if we are running in an interactive terminal (Local)
 IS_INTERACTIVE = sys.stdout.isatty()
 
+request_id_var = contextvars.ContextVar("request_id", default=None)
+
+
+class RequestIdFilter(logging.Filter):
+    """
+    Injects the current request_id (from contextvars) into the log record.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        req_id = request_id_var.get()
+        if req_id:
+            record.request_id = req_id  # type: ignore
+        return True
+
+
 class FileContextAdapter(logging.LoggerAdapter):
     """
     Adapter to inject file-specific context/labels into logs.
     """
-    def process(self, msg, kwargs):
+
+    def process(self, msg: Any, kwargs: Any) -> tuple[Any, Any]:
         extra = kwargs.get("extra", {})
         if "labels" not in extra:
             extra["labels"] = {}
@@ -52,11 +69,13 @@ class JsonFormatter(logging.Formatter):
 
     LEVEL_COLORS = {"DEBUG": GREY, "INFO": GREEN, "WARNING": YELLOW, "ERROR": RED, "CRITICAL": BOLD_RED}
 
-    def __init__(self, use_color: bool = False, global_labels: dict = None, **kwargs):
+    def __init__(self, use_color: bool = False, global_labels: dict[str, Any] | None = None, **kwargs: Any):
         """
         Args:
             use_color (bool): If True, adds ANSI colors and indentation for terminal.
                               If False, outputs compact valid JSON for files.
+            global_labels (dict | None): Global labels to include in every log.
+            **kwargs: Additional arguments for the base Formatter.
         """
         super().__init__(**kwargs)
         self.use_color = use_color
@@ -66,7 +85,7 @@ class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         log_record: dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "severity": record.levelname, # GCP prefers 'severity' over 'levelname' for filtering
+            "severity": record.levelname,  # GCP prefers 'severity' over 'levelname' for filtering
             "message": record.getMessage(),
             "logger": record.name,
             "module": record.module,
@@ -82,8 +101,8 @@ class JsonFormatter(logging.Formatter):
         # Check if 'labels' exists in the record (added via extra=...)
         if hasattr(record, "labels") and isinstance(record.labels, dict):
             final_labels.update(record.labels)
-        
-        # In GCP, 'logging.googleapis.com/labels' is the standard key for labels 
+
+        # In GCP, 'logging.googleapis.com/labels' is the standard key for labels
         # when logging JSON to stdout, but a top-level "labels" key often works too.
         if final_labels:
             log_record["logging.googleapis.com/labels"] = final_labels
@@ -91,7 +110,8 @@ class JsonFormatter(logging.Formatter):
         # Add extra fields that aren't standard LogRecord attributes
         standard_attrs = set(logging.LogRecord("", 0, "", 0, "", (), None).__dict__.keys())
         for key, value in record.__dict__.items():
-            if key in ["labels", "message"]: continue
+            if key in ["labels", "message"]:
+                continue
             if key not in standard_attrs and key not in log_record:
                 log_record[key] = value
 
@@ -109,6 +129,7 @@ class JsonFormatter(logging.Formatter):
         Uses Regex to inject colors into the JSON string.
         We colorize the Keys and the Level Value.
         """
+
         # Color the "keys" (e.g., "timestamp":) in CYAN
         def replace_key(match):
             return f"{self.CYAN}{match.group(1)}{self.RESET}:"
@@ -126,10 +147,12 @@ def setup_central_logging(log_file_path="app.json.log", global_labels=None):
 
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
-    
+
     # Remove existing handlers to avoid duplicates during reloads
     if root_logger.hasHandlers():
         root_logger.handlers.clear()
+
+    request_filter = RequestIdFilter()
 
     # --- SCENARIO 1: GOOGLE CLOUD RUN ---
     if IS_CLOUD_RUN:
@@ -137,22 +160,25 @@ def setup_central_logging(log_file_path="app.json.log", global_labels=None):
         # Do NOT use CloudLoggingHandler (API) as it blocks requests and isn't needed.
         # We output to stdout (INFO+) and stderr (ERROR) or just stdout for all.
         stream_handler = logging.StreamHandler(sys.stdout)
-        stream_handler.setLevel(logging.INFO) # Usually INFO in Prod
+        stream_handler.setLevel(logging.INFO)  # Usually INFO in Prod
         stream_handler.setFormatter(JsonFormatter(use_color=False, global_labels=global_labels))
         root_logger.addHandler(stream_handler)
-        
-        print(f"🚀 Logging setup for Cloud Run (JSON to Stdout).")
+        stream_handler.addFilter(request_filter)
+
+        print("🚀 Logging setup for Cloud Run (JSON to Stdout).")
         return
 
     # --- SCENARIO 2 & 3: LOCAL OR COMPUTE ENGINE (VM) ---
-    
+
     # 2a. Terminal Handler
     # Use colors ONLY if we are in an interactive terminal (Local)
     use_color = IS_INTERACTIVE
-    
+
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(JsonFormatter(use_color=use_color, global_labels=global_labels))
+    console_handler.addFilter(request_filter)
+
     root_logger.addHandler(console_handler)
 
     # 2b. File Handler
@@ -163,6 +189,8 @@ def setup_central_logging(log_file_path="app.json.log", global_labels=None):
     file_handler.setLevel(logging.DEBUG)
     file_handler.suffix = "%Y-%m-%d"
     file_handler.setFormatter(JsonFormatter(use_color=False, global_labels=global_labels))
+    file_handler.addFilter(request_filter)
+
     root_logger.addHandler(file_handler)
 
     # 2c. Google Cloud Handler (Direct API Push)
@@ -170,20 +198,24 @@ def setup_central_logging(log_file_path="app.json.log", global_labels=None):
     if GCP_LIB_AVAILABLE:
         try:
             client = google.cloud.logging.Client()
-            cloud_handler = CloudLoggingHandler(client, labels=global_labels) 
+            cloud_handler = CloudLoggingHandler(client, labels=global_labels)
             cloud_handler.setLevel(logging.INFO)
+            cloud_handler.addFilter(request_filter)
+
             root_logger.addHandler(cloud_handler)
             print("✅ Google Cloud Logging API Handler attached.")
         except Exception as e:
             print(f"⚠️ Could not attach Google Cloud Logging API: {e}")
-    
+
     mode = "Local Development" if IS_INTERACTIVE else "Headless/VM"
     print(f"💻 Logging setup for {mode}. Colors: {use_color}")
+
 
 def get_file_logger(module_name, file_specific_label):
     logger = logging.getLogger(module_name)
     context = {"file_id": file_specific_label}
     return FileContextAdapter(logger, context)
+
 
 def get_project_root() -> Path:
     """
@@ -192,10 +224,10 @@ def get_project_root() -> Path:
     """
     # Start from the folder containing THIS script
     current_path = Path(__file__).resolve().parent
-    
+
     # Root markers to look for
     root_markers = ("pyproject.toml", ".git", "requirements.txt", "Makefile")
-    
+
     for parent in [current_path] + list(current_path.parents):
         if any((parent / marker).exists() for marker in root_markers):
             project_root = parent.resolve()
@@ -205,12 +237,13 @@ def get_project_root() -> Path:
     # Fallback to the script's directory if no marker found
     return project_root
 
+
 def get_safe_path(user_provided_path: str) -> Path:
     """
     Guards a path against traversal by verifying it stays inside the root.
     """
     root = get_project_root()
-    
+
     # 2. RESOLVE: Convert to absolute path and strip all '../'
     # .resolve() is the key. It turns 'root/logs/../../etc/passwd' into '/etc/passwd'
     target_path = (root / user_provided_path).resolve()
@@ -218,5 +251,5 @@ def get_safe_path(user_provided_path: str) -> Path:
     # 3. VALIDATE: Check if the final destination is still under root
     if not target_path.is_relative_to(root):
         raise PermissionError(f"Traversal Attempt Blocked: {target_path} is outside {root}")
-        
+
     return target_path

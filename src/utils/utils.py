@@ -1,14 +1,18 @@
+import asyncio
 import os
 import random
 import shutil
 import time
-import asyncio
+import uuid
+from datetime import datetime
 from functools import wraps
+from typing import Any, Callable
 
 import mlflow
 import numpy as np
 import tensorflow as tf
 import yaml
+
 from src.utils.logging_config import get_file_logger
 from src.utils.settings import RepeatabilityConfig
 
@@ -16,7 +20,7 @@ logger = get_file_logger(__name__, "normal")
 
 
 def disable_randomness(repeatability: RepeatabilityConfig):
-    os.environ['PYTHONHASHSEED'] = str(repeatability.PYTHONHASHSEED)
+    os.environ["PYTHONHASHSEED"] = str(repeatability.PYTHONHASHSEED)
     np.random.seed(repeatability.PYTHONHASHSEED)
     random.seed(repeatability.PYTHONHASHSEED)
     tf.random.set_seed(repeatability.PYTHONHASHSEED)
@@ -61,52 +65,108 @@ with open("config/runs/env_params.yaml", "r") as get_config_yaml:  # "../../conf
 
 
 class UniversalTimer:
+    """
+    A versatile timer that can be used as a context manager (sync/async)
+    or as a decorator for sync and async functions.
+    """
+
     def __init__(self, label: str):
+        """
+        Initializes the timer with a label.
+
+        Args:
+            label (str): The name to associate with this timing block.
+        """
         self.label = label
-        self.start: float
+        self.start_time: float = 0.0
+        self.run_id = uuid.uuid4().hex[:6]
 
-    # --- Context Manager Support ---
-    def __enter__(self):
-        self.start = time.perf_counter()
+    def _format_args(self, *args: Any, **kwargs: Any) -> str:
+        """
+        Heuristic to join args and kwargs into a readable string.
+
+        Args:
+            *args: Positional arguments to format.
+            **kwargs: Keyword arguments to format.
+
+        Returns:
+            str: A formatted string representation of the arguments.
+        """
+        arg_str = ", ".join(map(repr, args))
+        kwarg_str = ", ".join(f"{k}={v!r}" for k, v in kwargs.items())
+        combined = ", ".join(filter(None, [arg_str, kwarg_str]))
+        return f"({combined})" if combined else "()"
+
+    def _log_start(self, params: str = "") -> None:
+        """
+        Logs the start of the timed block.
+
+        Args:
+            params (str): Additional parameters to include in the log.
+        """
+        self.start_time = time.perf_counter()
+        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        logger.info(f"START [{self.label}] [{self.run_id}] at {timestamp} | Args: {params}")
+
+    def _log_duration(self) -> None:
+        """Logs the total duration since start_time."""
+        duration = time.perf_counter() - self.start_time
+        logger.info(f"END   [{self.label}] [{self.run_id}] : {duration:.4f}s")
+
+    # --- Context Manager (Manual use won't have func params) ---
+    def __enter__(self) -> "UniversalTimer":
+        """Starts timing when entering a context."""
+        self._log_start("manual-context")
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: Any) -> None:
+        """Logs duration when exiting a context."""
         self._log_duration()
 
-    # --- Async Context Manager Support ---
-    async def __aenter__(self):
-        self.start = time.perf_counter()
+    async def __aenter__(self) -> "UniversalTimer":
+        """Starts timing when entering an async context."""
+        self._log_start("manual-async-context")
         return self
 
-    async def __aexit__(self, *args):
+    async def __aexit__(self, *args: Any) -> None:
+        """Logs duration when exiting an async context."""
         self._log_duration()
-
-    def _log_duration(self):
-        duration = time.perf_counter() - self.start
-        logger.info(f"Timer [{self.label}]: {duration:.4f}s")
 
     # --- Decorator Support ---
-    def __call__(self, func):
-        label = self.label
+    def __call__(self, func: Callable[..., Any]) -> Callable[..., Any]:
+        """
+        Decorates a function to log its execution time.
 
-        # 1. Handle Async Functions
+        Args:
+            func (Callable): The function to decorate.
+
+        Returns:
+            Callable: The wrapped function.
+        """
+        label = self.label
+        params_func = self._format_args  # Reference to helper
+
         if asyncio.iscoroutinefunction(func):
 
             @wraps(func)
             async def async_wrapper(*args, **kwargs):
-                # Create a NEW instance to ensure concurrency safety
-                async with UniversalTimer(label):
+                instance = UniversalTimer(label)
+                instance._log_start(params_func(*args, **kwargs))
+                try:
                     return await func(*args, **kwargs)
+                finally:
+                    instance._log_duration()
 
             return async_wrapper
-
-        # 2. Handle Sync Functions
         else:
 
             @wraps(func)
             def sync_wrapper(*args, **kwargs):
-                # Create a NEW instance to ensure concurrency safety
-                with UniversalTimer(label):
+                instance = UniversalTimer(label)
+                instance._log_start(params_func(*args, **kwargs))
+                try:
                     return func(*args, **kwargs)
+                finally:
+                    instance._log_duration()
 
             return sync_wrapper

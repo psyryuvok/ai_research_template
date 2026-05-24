@@ -1,10 +1,11 @@
-import sqlite3
 import os
 import shutil
+import sqlite3
+
 
 def rewrite_mlflow_paths(db_path, new_artifact_root):
     """
-    Updates the artifact_location in experiments and artifact_uri in runs 
+    Updates the artifact_location in experiments and artifact_uri in runs
     from absolute paths to a container-agnostic path.
     """
 
@@ -25,36 +26,30 @@ def rewrite_mlflow_paths(db_path, new_artifact_root):
         print("Updating experiments table...")
         cursor.execute("SELECT experiment_id, artifact_location FROM experiments;")
         experiments = cursor.fetchall()
-        
+
         for exp_id, location in experiments:
             if location and location.startswith("file://") and "/reports/mlartifacts" in location:
                 # e.g. file:///home/user/BEHealSy/reports/mlartifacts/1
                 # -> file:///mlartifacts/1
                 new_location = location.split("/reports/mlartifacts")[1]
                 new_location = f"{new_artifact_root}{new_location}"
-                
-                cursor.execute(
-                    "UPDATE experiments SET artifact_location = ? WHERE experiment_id = ?",
-                    (new_location, exp_id)
-                )
+
+                cursor.execute("UPDATE experiments SET artifact_location = ? WHERE experiment_id = ?", (new_location, exp_id))
                 print(f"  Exp {exp_id}: {location} -> {new_location}")
 
         # 2. Update artifact_uri in runs table
         print("\nUpdating runs table...")
         cursor.execute("SELECT run_uuid, artifact_uri FROM runs;")
         runs = cursor.fetchall()
-        
+
         for run_uuid, uri in runs:
             if uri and uri.startswith("file://") and "/reports/mlartifacts" in uri:
                 # e.g. file:///home/user/BEHealSy/reports/mlartifacts/1/run_id/artifacts
                 # -> file:///mlartifacts/1/run_id/artifacts
                 new_uri = uri.split("/reports/mlartifacts")[1]
                 new_uri = f"{new_artifact_root}{new_uri}"
-                
-                cursor.execute(
-                    "UPDATE runs SET artifact_uri = ? WHERE run_uuid = ?",
-                    (new_uri, run_uuid)
-                )
+
+                cursor.execute("UPDATE runs SET artifact_uri = ? WHERE run_uuid = ?", (new_uri, run_uuid))
                 print(f"  Run {run_uuid}: {uri} -> {new_uri}")
 
         # Commit changes

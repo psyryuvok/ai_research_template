@@ -1,10 +1,11 @@
-import yaml
 import os
 from pathlib import Path
-from typing import Any, Dict, Type, Tuple
+from typing import Any, Dict, Tuple, Type
+
+import yaml
+from dotenv import dotenv_values
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
-from dotenv import dotenv_values
 
 from src.utils.logging_config import get_file_logger, get_safe_path
 
@@ -34,6 +35,7 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
 
 
 # --- Sub-Models ---
+
 
 class DatabaseConfig(BaseModel):
     host: str = "localhost"
@@ -102,6 +104,10 @@ class ModelSeizureConfig(BaseModel):
 
 # --- The Main Settings Class ---
 class Settings(BaseSettings):
+    """
+    Application-wide settings managed via Pydantic and YAML/Env sources.
+    """
+
     name: str
     security: SecurityConfig
     files: FilesConfig
@@ -135,7 +141,8 @@ class Settings(BaseSettings):
         # 3. Check .env file
         # 4. Fallback to default
 
-        target_file = init_settings.init_kwargs.get("_yaml_file") or os.environ.get("ENV_PARAMS") or dotenv_values(".env").get("ENV_PARAMS") or "env_params.yaml"
+        init_kwargs = getattr(init_settings, "init_kwargs", {})
+        target_file = init_kwargs.get("_yaml_file") or os.environ.get("ENV_PARAMS") or dotenv_values(".env").get("ENV_PARAMS") or "env_params.yaml"
         target_file = get_safe_path(target_file)
         return (
             init_settings,

@@ -14,10 +14,6 @@ dependencies = [
     "pexpect",
     "tensorflow[and-cuda]",
     "sphinx",
-    "pytest",
-    "pytest-cov",
-    "pytest-mock",
-    "pytest-asyncio",
     "coverage",
     "python-dotenv",
     #"tflite-runtime",
@@ -64,7 +60,30 @@ plot =[
     "pydot",
     "mlflow"
     ]
-dev = []
+
+
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pytest-mock",
+    "pytest-asyncio",
+    "mypy",
+    "ruff",
+
+    # --- Mypy Type Stubs ---
+    "pandas-stubs",
+    "types-PyYAML",
+    "types-Pygments",
+    "types-cffi",
+    "types-colorama",
+    "types-jsonschema",
+    "types-protobuf",
+    "types-pyasn1",
+    "types-python-dateutil",
+    "types-shapely",
+    "types-tqdm",
+    "types-tensorflow",
+    ]
 
 ai = [
 
@@ -100,12 +119,18 @@ exclude = [
 [tool.black]
 line-length = 159
 
+[tool.mypy]
+plugins = [
+  "pydantic.mypy"
+]
 [[tool.mypy.overrides]]
-module = ["requests.*"]
+module = ["requests.*", "google.cloud.*"]
 ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 159
+[tool.ruff.lint]
+select = ["I"]
 [tool.ruff.lint.pycodestyle]
 max-line-length = 159
 

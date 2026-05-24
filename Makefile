@@ -10,7 +10,7 @@ PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 YAML_PARAMS_FILE := ./config/runs/env_params.yaml
 VENV_PATH := ./.venv
 PROFILE = default
-PROJECT_NAME = Detepsy
+PROJECT_NAME = AiResearchTemplate
 PYTHON_VERSION = 3.12
 PYTHON_INTERPRETER := $(VENV_PATH)/bin/python
 DEV_TOOLS_FROM_PYPROJECT := $(shell $(PYTHON_INTERPRETER) -c "import tomllib; f=open('pyproject.toml', 'rb'); data=tomllib.load(f); print(' '.join(data.get('tool', {}).get('project-tools', {}).get('pipx_packages', [])))")
@@ -28,7 +28,7 @@ setup: install
 ## Install requirements with uv
 install: $(PYTHON_INTERPRETER) ## Install/sync project dependencies using uv
 	@echo "-> Compiling and syncing dependencies with uv..."
-	@uv pip compile pyproject.toml --extra dev -o requirements.txt --python-version $(PYTHON_VERSION)
+	@uv pip compile pyproject.toml --extra dev -o requirements.txt --python $(PYTHON_INTERPRETER)
 	@uv pip sync requirements.txt --python $(PYTHON_INTERPRETER)
 	@uv pip install -e . --python $(PYTHON_INTERPRETER)
 
@@ -74,6 +74,19 @@ tools: $(PYTHON_INTERPRETER)
 		echo "   -> Pytest not found in pipx tool list. Skipping plugin injection."; \
 	fi
 
+	@if pipx list | grep -q -E "package\s+mypy\s+"; then \
+		for plugin in pydantic pandas-stubs types-PyYAML types-Pygments types-cffi types-colorama types-jsonschema types-protobuf types-pyasn1 types-python-dateutil types-shapely types-tqdm; do \
+			if ! pipx list --include-injected | grep -q -w "$$plugin"; then \
+				echo "   -> Mypy is installed via pipx, but plugin '$$plugin' is missing. Injecting: $$plugin"; \
+				pipx inject mypy "$$plugin"; \
+			else \
+				echo "   -> Mypy and plugin '$$plugin' are already installed. Skipping."; \
+			fi; \
+		done; \
+	else \
+		echo "   -> Mypy not found in pipx tool list. Skipping plugin injection."; \
+	fi
+
 	@echo "-> Tool check complete."
 #REVIEW - In pipx list, we are not seeing anything about jupyterlab-optuna. Also it is always injecting
 ## Make Dataset
@@ -95,7 +108,7 @@ lint:
 	ruff check .
 	mypy --python-executable $(PYTHON_INTERPRETER) -p $(PACKAGE_NAME)
 #flake8 src
-## Format using black
+## Format using ruff
 format:
 	@echo "-> Running formatters..."
 	ruff format .

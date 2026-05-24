@@ -1,5 +1,7 @@
-import pytest
 import os
+
+import pytest
+
 from src.utils.logging_config import setup_central_logging
 
 
@@ -27,14 +29,15 @@ def configure_test_logging():
 
     # Teardown: Properly flush and close CloudLoggingHandler to avoid threading issues
     import logging
+
     root_logger = logging.getLogger()
     for handler in root_logger.handlers:
-        if hasattr(handler, 'flush'):
+        if hasattr(handler, "flush"):
             try:
                 handler.flush()  # Try to send pending logs
             except Exception:
                 pass  # Ignore flush errors
-        if hasattr(handler, 'close'):
+        if hasattr(handler, "close"):
             try:
                 handler.close()
             except Exception:

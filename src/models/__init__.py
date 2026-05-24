@@ -1,2 +1,1 @@
-from . import predict_model
-from . import train_model
+from . import predict_model, train_model

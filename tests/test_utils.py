@@ -1,8 +1,10 @@
 import asyncio
-import time
-import pytest
-from unittest.mock import patch
 import logging
+import time
+from unittest.mock import patch
+
+import pytest
+
 from src.utils.logging_config import get_file_logger
 from src.utils.utils import UniversalTimer
 

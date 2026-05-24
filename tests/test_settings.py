@@ -1,13 +1,14 @@
 import os
-import yaml
 import shutil
-import pytest
 from pathlib import Path
+
+import pytest
+import yaml
 from pydantic import ValidationError
 
 # Import the refactored Settings class from your main file
 # Assuming your file is named 'config.py'
-from src.utils.settings import Settings, DatabaseConfig
+from src.utils.settings import DatabaseConfig, Settings
 
 # --- Fixtures ---
 
@@ -67,9 +68,9 @@ def yaml_config_file(workspace_tmp_path):
                 "dropout_rate": [0.1, 0.2],
                 "batch_size": [1, 2],
                 "n_trials": 1,
-                "timeout": 1
+                "timeout": 1,
             },
-            "epochs": 1
+            "epochs": 1,
         },
         "github": {"MY_GOOGLE_DRIVE_PATH": "", "GIT_USERNAME": "", "GIT_REPOSITORY": ""},
         "output": {"generate_files": False, "generate_statistics": False, "save_images": False},
@@ -136,10 +137,10 @@ def test_missing_yaml_file(clean_env):
     os.environ["MODEL___EARLY_STOP"] = "5"
     os.environ["MODEL_SEIZURE___OPTUNA_PARAMETERS___STUDY_NAME"] = "s"
     os.environ["MODEL_SEIZURE___OPTUNA_PARAMETERS___MODEL_NAME"] = '["m1"]'
-    os.environ["MODEL_SEIZURE___OPTUNA_PARAMETERS___LEARNING_RATE"] = '[0.1, 0.2]'
-    os.environ["MODEL_SEIZURE___OPTUNA_PARAMETERS___NUM_UNITS"] = '[1, 2]'
-    os.environ["MODEL_SEIZURE___OPTUNA_PARAMETERS___DROPOUT_RATE"] = '[0.1, 0.2]'
-    os.environ["MODEL_SEIZURE___OPTUNA_PARAMETERS___BATCH_SIZE"] = '[1, 2]'
+    os.environ["MODEL_SEIZURE___OPTUNA_PARAMETERS___LEARNING_RATE"] = "[0.1, 0.2]"
+    os.environ["MODEL_SEIZURE___OPTUNA_PARAMETERS___NUM_UNITS"] = "[1, 2]"
+    os.environ["MODEL_SEIZURE___OPTUNA_PARAMETERS___DROPOUT_RATE"] = "[0.1, 0.2]"
+    os.environ["MODEL_SEIZURE___OPTUNA_PARAMETERS___BATCH_SIZE"] = "[1, 2]"
     os.environ["MODEL_SEIZURE___OPTUNA_PARAMETERS___N_TRIALS"] = "1"
     os.environ["MODEL_SEIZURE___OPTUNA_PARAMETERS___TIMEOUT"] = "1"
     os.environ["MODEL_SEIZURE___EPOCHS"] = "1"
@@ -180,9 +181,9 @@ def test_validation_error(clean_env, yaml_config_file, workspace_tmp_path):
                 "dropout_rate": [0.1, 0.2],
                 "batch_size": [1, 2],
                 "n_trials": 1,
-                "timeout": 1
+                "timeout": 1,
             },
-            "epochs": 1
+            "epochs": 1,
         },
         "github": {"MY_GOOGLE_DRIVE_PATH": "", "GIT_USERNAME": "", "GIT_REPOSITORY": ""},
         "output": {"generate_files": False, "generate_statistics": False, "save_images": False},
@@ -191,7 +192,7 @@ def test_validation_error(clean_env, yaml_config_file, workspace_tmp_path):
             "username": "u",
             "password": "p",
             "data": "d",
-        }
+        },
     }
     bad_file = workspace_tmp_path / "bad_config.yaml"
     with open(bad_file, "w") as f:
