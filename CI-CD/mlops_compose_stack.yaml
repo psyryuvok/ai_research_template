@@ -1,7 +1,7 @@
 services:
   # 1. MLflow UI Server
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v3.9.0
+    image: ghcr.io/mlflow/mlflow:v3.14.0
     #user: "1000:1000"
     ports:
       - "8089:8089"
@@ -13,8 +13,11 @@ services:
       mlflow server
       --host 0.0.0.0
       --port 8089
-      --backend-store-uri sqlite:////mlflow.db
-      --default-artifact-root file:///mlartifacts
+      --backend-store-uri sqlite:////app/reports/mlflow.db
+      --default-artifact-root mlflow-artifacts:/
+      --artifacts-destination /app/reports/mlartifacts
+      --serve-artifacts
+      --cors-allowed-origins "*"
     #--backend-store-uri file:///mlruns
     
     #--default-artifact-root file:///mlartifacts

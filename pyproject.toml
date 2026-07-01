@@ -36,7 +36,8 @@ dependencies = [
     "pyedflib",
     "pydantic_settings",
     "mlflow",
-    "nvidia-ml-py"
+    "nvidia-ml-py",
+    "invoke"
 ]
 
 

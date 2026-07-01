@@ -32,6 +32,33 @@ install: $(PYTHON_INTERPRETER) ## Install/sync project dependencies using uv
 	@uv pip sync requirements.txt --python $(PYTHON_INTERPRETER)
 	@uv pip install -e . --python $(PYTHON_INTERPRETER)
 
+## Compile production dependencies with uv
+reqs-prod: $(PYTHON_INTERPRETER) ## Compile production dependencies into requirements-prod.txt
+	@echo "-> Compiling production dependencies into requirements-prod.txt with uv..."
+	@uv pip compile pyproject.toml -o requirements-prod.txt --python $(PYTHON_INTERPRETER)
+
+## Compile secure production lockfile with hashes
+lock-prod: $(PYTHON_INTERPRETER) ## Compile production dependencies into a secure requirements-prod.lock with hashes
+	@echo "-> Compiling secure production lockfile with hashes..."
+	@uv pip compile pyproject.toml --generate-hashes -o requirements-prod.lock --python $(PYTHON_INTERPRETER)
+
+## --- Modern uv Workspace Commands ---
+
+## Generate a universal uv.lock file
+uv-lock: ## Generate or update the universal uv.lock file
+	@echo "-> Generating universal uv.lock file..."
+	@uv lock
+
+## Sync environment using the universal uv.lock file
+uv-sync: ## Install/sync dependencies from uv.lock
+	@echo "-> Syncing environment with uv sync..."
+	@uv sync
+
+## Sync ONLY production dependencies using the universal uv.lock file
+uv-sync-prod: ## Install/sync ONLY production dependencies from uv.lock
+	@echo "-> Syncing production environment with uv sync..."
+	@uv sync --no-dev --no-default-groups
+
 ## Install pipx tools
 tools: $(PYTHON_INTERPRETER)
 	@echo "-> Installing development tools from pyproject.toml with pipx..."
@@ -90,7 +117,7 @@ tools: $(PYTHON_INTERPRETER)
 	@echo "-> Tool check complete."
 #REVIEW - In pipx list, we are not seeing anything about jupyterlab-optuna. Also it is always injecting
 ## Make Dataset
-data: requirements
+data: $(PYTHON_INTERPRETER)
 	$(PYTHON_INTERPRETER) src/data/make_dataset.py data/raw data/processed
 
 ## Delete all compiled Python files
@@ -152,7 +179,7 @@ define SETUP_DOCKER_ENV
 	echo "   -> Name from YAML:       '$$RUN_NAME'"; \
 	echo "   -> Study Name from YAML:   '$$STUDY_NAME'"; \
 	\
-	export OPTUNA_LOG_DIR="$(PROJECT_DIR)/$$RUN_NAME.db"; \
+	export OPTUNA_LOG_DIR="$(PROJECT_DIR)/reports/runs/$$RUN_NAME/$$STUDY_NAME/optuna.db"; \
 	export TENSORBOARD_LOG_DIR="$(PROJECT_DIR)/reports/tensorboard/$$RUN_NAME/logs_optuna/$$STUDY_NAME"; \
 	\
 	echo "      OPTUNA_LOG_DIR    = $$OPTUNA_LOG_DIR"; \

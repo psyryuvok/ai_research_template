@@ -51,8 +51,10 @@ def get_or_create_mflow_experiment(experiment_name):
         shutil.copy2(backup_file, db_file)
         os.remove(backup_file)
 
-    mlflow.set_tracking_uri(f"sqlite:///{db_file}")
-    artifact_location = f"file://{db_path}/mlartifacts"
+    # Use HTTP tracking URI so that artifact proxying (mlflow-artifacts:/) works
+    mlflow.set_tracking_uri("http://localhost:8089")
+    # When serving artifacts via the MLflow server in Docker, the server needs to proxy the requests
+    artifact_location = "mlflow-artifacts:/"
 
     if experiment := mlflow.get_experiment_by_name(experiment_name):
         return experiment.experiment_id
