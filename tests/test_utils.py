@@ -37,7 +37,7 @@ def test_recursion_safety(caplog):
     # 3. n=2: ~0.2s
     # 4. Outer-most (n=3): ~0.3s
 
-    logs = [r.message for r in caplog.records if "Recursive" in r.message]
+    logs = [r.message for r in caplog.records if "Recursive" in r.message and "END   [" in r.message]
     assert len(logs) == 4
 
     # Check the longest duration (the outer call)
@@ -66,7 +66,7 @@ async def test_async_concurrency(caplog):
 
     await asyncio.gather(task1, task2)
 
-    logs = [r.message for r in caplog.records if "AsyncWorker" in r.message]
+    logs = [r.message for r in caplog.records if "AsyncWorker" in r.message and "END   [" in r.message]
     assert len(logs) == 2
 
     # Parse durations
