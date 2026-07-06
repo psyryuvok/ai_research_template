@@ -64,7 +64,7 @@ class BaseOptunaKerasPipeline(abc.ABC):
         ]
 
         # 3. Train
-        model.fit(train_batched, validation_data=dev_batched, epochs=self.config.model_seizure.epochs, callbacks=callbacks, verbose=0)
+        model.fit(train_batched, validation_data=dev_batched, epochs=self.config.model_seizure.epochs, callbacks=callbacks, verbose=1)
 
         # 4. Save Trial Model
         trial_specific_dir = os.path.join(self.base_model_dir, f"T-{trial.number}")
@@ -77,13 +77,13 @@ class BaseOptunaKerasPipeline(abc.ABC):
         eval_batched = eval_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
         self.evaluate_trial(model, eval_batched, metadata, trial.number, trial_specific_dir)
 
-        results = model.evaluate(dev_batched, return_dict=True, verbose=0)
+        results = model.evaluate(dev_batched, return_dict=True, verbose=1)
 
         emissions = trial_tracker.stop()
         if emissions is not None:
             mlflow.log_metric("emissions_kg_CO2", emissions)
 
-        # Prioritize domain specific metric, fallback to general tracking metric
+        # NOTE - Prioritize domain specific metric, fallback to general tracking metric
         if "seizure_type_f1_score" in results:
             return results["seizure_type_f1_score"]
         return results.get(self.metric_to_track.replace("val_", ""), 0.0)
