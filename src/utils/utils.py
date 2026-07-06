@@ -12,6 +12,7 @@ import mlflow
 import numpy as np
 import tensorflow as tf
 import yaml
+from codecarbon import OfflineEmissionsTracker
 
 from src.utils.logging_config import get_file_logger
 from src.utils.settings import RepeatabilityConfig
@@ -24,6 +25,24 @@ def disable_randomness(repeatability: RepeatabilityConfig):
     np.random.seed(repeatability.PYTHONHASHSEED)
     random.seed(repeatability.PYTHONHASHSEED)
     tf.random.set_seed(repeatability.PYTHONHASHSEED)
+
+
+def setup_tracker(project_name: str, output_dir: str, output_file: str = "emissions_log.csv") -> OfflineEmissionsTracker:
+    """
+    Initializes and starts a generic CodeCarbon emissions tracker.
+    Returns the tracker instance so .stop() can be called later.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+
+    tracker = OfflineEmissionsTracker(
+        project_name=project_name,
+        output_dir=output_dir,
+        output_file=output_file,
+        log_level="error",  # Keeps terminal clean
+        country_iso_code="USA",  # Change or make this configurable via settings
+    )
+    tracker.start()
+    return tracker
 
 
 def get_or_create_mflow_experiment(experiment_name):

@@ -125,7 +125,7 @@ plugins = [
   "pydantic.mypy"
 ]
 [[tool.mypy.overrides]]
-module = ["requests.*", "google.cloud.*"]
+module = ["requests.*", "google.cloud.*", "sklearn.*"]
 ignore_missing_imports = true
 
 [tool.ruff]
