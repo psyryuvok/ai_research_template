@@ -98,7 +98,7 @@ class BaseOptunaKerasPipeline(abc.ABC):
         global_tracker = setup_tracker(project_name=self.study_name, output_dir=self.runs_dir, output_file="emissions_log.csv")
 
         with mlflow.start_run(experiment_id=self.experiment_id, run_name=self.study_name):
-            mlflow.tensorflow.autolog()
+            mlflow.tensorflow.autolog(checkpoint=False, keras_model_kwargs={"save_format": "keras"}, saved_model_kwargs={"save_format": "keras"})
 
             study = optuna.create_study(
                 study_name=self.study_name,
