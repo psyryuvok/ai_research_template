@@ -1,0 +1,29 @@
+project_name:
+  type: str
+  help: "The name of the project"
+  default: "ai_research_template"
+project_description:
+  type: str
+  help: "A short description of the project"
+  default: "Is a template for AI research."
+author:
+  type: str
+  help: "The author of the project"
+  default: "Me"
+version:
+  type: str
+  help: "The initial version of the project"
+  default: "0.1.0"
+python_version:
+  type: str
+  help: "The Python version required"
+  default: ">=3.12"
+_exclude:
+  - "copier.yml"
+  - ".git"
+  - ".venv"
+  - "ai_research_template.egg-info"
+  - "src.egg-info"
+  - "node_modules"
+  - "*/__pycache__"
+  - "*.pyc"
