@@ -43,7 +43,7 @@ class BaseOptunaKerasPipeline(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def evaluate_trial(self, model, eval_dataset_batched, metadata, trial_number, trial_specific_dir):
+    def evaluate_trial(self, model, train_dataset_batched, dev_dataset_batched, eval_dataset_batched, metadata, trial_number, trial_specific_dir):
         """Custom evaluation hook (e.g., Confusion Matrices, custom metrics)"""
         pass
 
@@ -57,6 +57,16 @@ class BaseOptunaKerasPipeline(abc.ABC):
         train_batched = train_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
         dev_batched = dev_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
+        def remove_metadata(*args):
+            inputs = args[0]
+            inputs_clean = {k: v for k, v in inputs.items() if not k.startswith("meta_info_")}
+            if len(args) == 3:
+                return inputs_clean, args[1], args[2]
+            return inputs_clean, args[1]
+
+        train_fit = train_batched.map(remove_metadata, num_parallel_calls=tf.data.AUTOTUNE)
+        dev_fit = dev_batched.map(remove_metadata, num_parallel_calls=tf.data.AUTOTUNE)
+
         # 2. Callbacks
         callbacks = [
             tf.keras.callbacks.EarlyStopping(monitor=self.metric_to_track, patience=20, mode="max", restore_best_weights=True),
@@ -64,7 +74,7 @@ class BaseOptunaKerasPipeline(abc.ABC):
         ]
 
         # 3. Train
-        model.fit(train_batched, validation_data=dev_batched, epochs=self.config.model_seizure.epochs, callbacks=callbacks, verbose=1)
+        model.fit(train_fit, validation_data=dev_fit, epochs=self.config.model_seizure.epochs, callbacks=callbacks, verbose=1)
 
         # 4. Save Trial Model
         trial_specific_dir = os.path.join(self.base_model_dir, f"T-{trial.number}")
@@ -75,9 +85,9 @@ class BaseOptunaKerasPipeline(abc.ABC):
 
         # 5. Evaluate and Return Metric
         eval_batched = eval_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
-        self.evaluate_trial(model, eval_batched, metadata, trial.number, trial_specific_dir)
+        self.evaluate_trial(model, train_batched, dev_batched, eval_batched, metadata, trial.number, trial_specific_dir)
 
-        results = model.evaluate(dev_batched, return_dict=True, verbose=1)
+        results = model.evaluate(dev_fit, return_dict=True, verbose=1)
 
         emissions = trial_tracker.stop()
         if emissions is not None:
@@ -86,6 +96,8 @@ class BaseOptunaKerasPipeline(abc.ABC):
         # NOTE - Prioritize domain specific metric, fallback to general tracking metric
         if "seizure_type_f1_score" in results:
             return results["seizure_type_f1_score"]
+        elif "f1_score" in results:
+            return results["f1_score"]
         return results.get(self.metric_to_track.replace("val_", ""), 0.0)
 
     def run_optimization(self, n_trials: int):
@@ -98,7 +110,7 @@ class BaseOptunaKerasPipeline(abc.ABC):
         global_tracker = setup_tracker(project_name=self.study_name, output_dir=self.runs_dir, output_file="emissions_log.csv")
 
         with mlflow.start_run(experiment_id=self.experiment_id, run_name=self.study_name):
-            mlflow.tensorflow.autolog(checkpoint=False, keras_model_kwargs={"save_format": "keras"}, saved_model_kwargs={"save_format": "keras"})
+            mlflow.tensorflow.autolog(checkpoint=True, keras_model_kwargs={"save_format": "keras"}, saved_model_kwargs={"save_format": "keras"})
 
             study = optuna.create_study(
                 study_name=self.study_name,
@@ -110,19 +122,25 @@ class BaseOptunaKerasPipeline(abc.ABC):
 
             tb_callback = TensorBoardCallback(f"./reports/tensorboard/{self.config.name}/logs_optuna/{self.study_name}", metric_name=self.metric_to_track)
 
-            study.optimize(
-                lambda t: self.objective(t, train_dataset, dev_dataset, eval_dataset, metadata),
-                n_trials=n_trials,
-                callbacks=[callback_with_cleanup, tb_callback, mlflow_callback],
-                gc_after_trial=True,
-            )
+            @mlflow_callback.track_in_mlflow()
+            def objective_wrapper(t):
+                return self.objective(t, train_dataset, dev_dataset, eval_dataset, metadata)
+
+            study.optimize(objective_wrapper, n_trials=n_trials, callbacks=[callback_with_cleanup, tb_callback, mlflow_callback], gc_after_trial=True)
 
             # Save the very best model to a clear path as well
             best_model_path_from_study = study.user_attrs.get("best_model_path")
             if best_model_path_from_study and os.path.exists(best_model_path_from_study):
                 loaded_best_model = tf.keras.models.load_model(best_model_path_from_study, compile=False)
                 # Ensure the overall best model is saved
-                loaded_best_model.save(f"pipeline_model_best_{self.study_name}.keras")
+                loaded_best_model.save(f"./reports/runs/{self.config.name}/{self.study_name}/pipeline_model_best_{self.study_name}.keras")
+
+                best_batch_size = study.best_trial.params.get("optuna_batch_size", 512)
+                train_batched_best = train_dataset.batch(best_batch_size).prefetch(tf.data.AUTOTUNE)
+                dev_batched_best = dev_dataset.batch(best_batch_size).prefetch(tf.data.AUTOTUNE)
+                eval_batched_best = eval_dataset.batch(best_batch_size).prefetch(tf.data.AUTOTUNE)
+
+                self.evaluate_trial(loaded_best_model, train_batched_best, dev_batched_best, eval_batched_best, metadata, None, self.base_model_dir)
 
             final_cleanup(study, self.base_model_dir)
             log_optuna_plots(study)

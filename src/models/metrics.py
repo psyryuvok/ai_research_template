@@ -6,7 +6,9 @@ import numpy as np
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 
 
-def evaluate_multi_head_classification(model, dataset, dataset_name, active_targets, class_names_dict, num_classes_dict, save_dir, trial_number=None):
+def evaluate_multi_head_classification(
+    model, dataset, dataset_name, active_targets, class_names_dict, num_classes_dict, figures_dir, stats_dir, trial_number=None, metadata_names=None
+):
     """
     A generic template function to evaluate multi-head classification models.
     It iterates over multiple targets and generates absolute and normalized confusion matrices.
@@ -31,7 +33,7 @@ def evaluate_multi_head_classification(model, dataset, dataset_name, active_targ
 
     # Increase font size for plots globally for this context
     plt.rcParams.update({"font.size": 18})
-    artifact_path = f"confusion_matrices/trial_{trial_number}" if trial_number is not None else "confusion_matrices/best_model"
+    artifact_path = f"evaluation/trial_{trial_number}/{dataset_name}" if trial_number is not None else f"evaluation/best_model/{dataset_name}"
 
     for t in active_targets:
         if not y_true_dict[t]:
@@ -43,8 +45,8 @@ def evaluate_multi_head_classification(model, dataset, dataset_name, active_targ
         display_labels = class_names_dict.get(t)
         labels_range = list(range(num_classes_dict.get(t, len(display_labels) if display_labels else 0)))
 
-        _plot_and_save_cm(y_true, y_pred, labels_range, display_labels, dataset_name, t, save_dir, artifact_path, normalize=None)
-        _plot_and_save_cm(y_true, y_pred, labels_range, display_labels, dataset_name, t, save_dir, artifact_path, normalize="true")
+        _plot_and_save_cm(y_true, y_pred, labels_range, display_labels, dataset_name, t, figures_dir, artifact_path, normalize=None)
+        _plot_and_save_cm(y_true, y_pred, labels_range, display_labels, dataset_name, t, figures_dir, artifact_path, normalize="true")
 
 
 def _plot_and_save_cm(y_true, y_pred, labels_range, display_labels, dataset_name, target, save_dir, artifact_path, normalize):
