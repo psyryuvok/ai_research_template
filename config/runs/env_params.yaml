@@ -1,0 +1,44 @@
+name: name
+repeatability:
+  seed: 81
+  PYTHONHASHSEED: "0"
+security:
+  credentials_path: "credentials.yaml"
+files:
+  data_path: ""
+db:
+  host: "localhost"
+  port: 5432
+  username: "fake_user"
+  password: "fake_password"
+  data: "fake_data"
+data:
+  stride_size: 9 # Seconds
+  time_size: 6 # Seconds
+  type_seizure_extract: ['false_alarms'] # # Options: 'false_alarms', 'true_positive'
+model:
+  model_name: "feature_engineering"
+  early_stop: 5
+model_seizure:
+  optuna_parameters:
+    study_name: study
+    model_name: ["ltsm_dense", "conv_dense", "conv_ltsm_dense"]
+    learning_rate: 
+      - !!float 1e-7
+      - !!float 1e-4
+    num_units: [1,6]
+    dropout_rate:
+      - !!float 0.001
+      - !!float 0.999 
+    batch_size: [2,64]
+    n_trials: 3
+    timeout: 3600
+  epochs: 3
+github:
+  MY_GOOGLE_DRIVE_PATH: ""  # path to your project on Google Drive
+  GIT_USERNAME: ""  # username of the user who has the repo
+  GIT_REPOSITORY: ""
+output:
+  generate_files: False
+  generate_statistics: True
+  save_images: True

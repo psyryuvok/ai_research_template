@@ -1,0 +1,150 @@
+[project]
+name = "{{ project_name }}"
+version = "{{ version }}"
+readme = "README.md"
+description = "{{ project_description }}"
+requires-python = "{{ python_version }}"
+keywords = ["template"]
+
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "PyYAML",
+    "pexpect",
+    "tensorflow[and-cuda]",
+    "sphinx",
+    "coverage",
+    "python-dotenv",
+    #"tflite-runtime",
+    "onnxruntime",
+    "tf2onnx",
+    "tensorflow_model_optimization",
+    "tf_keras",
+    "optuna",
+    "optuna-integration",
+    "pyyaml",
+    "dill",
+    "codecarbon>=3.2.0",
+    "tf_keras",
+    "optuna",
+    "optuna-integration",
+    "dash",
+    "dash-bootstrap-components",
+    "pydot",
+    #"tensorflow-addons",
+    "pyedflib",
+    "pydantic_settings",
+    "mlflow",
+    "nvidia-ml-py",
+    "invoke"
+]
+
+
+[tool.setuptools]
+packages = ["src"]
+
+[project.optional-dependencies]
+gui = ["PyQt5", "dash"]
+cli = [
+  "rich",
+  "click",
+  "fire"
+]
+plot =[
+    "matplotlib",
+    "matplotlib-inline",
+    "seaborn",
+    "tensorflow-plot",
+    "scikit-plot",
+    "plotly",
+    "pydot",
+    "mlflow"
+    ]
+
+
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pytest-mock",
+    "pytest-asyncio",
+    "mypy",
+    "ruff",
+
+    # --- Mypy Type Stubs ---
+    "pandas-stubs",
+    "types-PyYAML",
+    "types-Pygments",
+    "types-cffi",
+    "types-colorama",
+    "types-jsonschema",
+    "types-protobuf",
+    "types-pyasn1",
+    "types-python-dateutil",
+    "types-shapely",
+    "types-tqdm",
+    "types-tensorflow",
+    ]
+
+ai = [
+
+
+]
+ 
+[tool.project-tools]
+pipx_packages = [
+    "black",
+    "mypy",
+    "flake8",
+    "flake8-pyproject",
+    "isort",
+    "optuna-dashboard",
+    "jupyterlab",
+    "yq",
+    "autopep8",
+    "ruff",
+    "pytest",
+    "cookiecutter-data-science"
+    ]
+
+[tool.flake8]
+max-line-length = 159
+max-complexity = 10
+exclude = [
+    # No need to traverse our git directory
+    ".git",
+    # There's no value in checking cache directories
+    "__pycache__"
+]
+
+[tool.black]
+line-length = 159
+
+[tool.mypy]
+plugins = [
+  "pydantic.mypy"
+]
+[[tool.mypy.overrides]]
+module = ["requests.*", "google.cloud.*", "sklearn.*"]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 159
+[tool.ruff.lint]
+select = ["I"]
+[tool.ruff.lint.pycodestyle]
+max-line-length = 159
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+[tool.coverage.run]
+source = ["src"]
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:"
+]
+
+
+
+

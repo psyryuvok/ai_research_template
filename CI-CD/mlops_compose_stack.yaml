@@ -1,0 +1,50 @@
+services:
+  # 1. MLflow UI Server
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.14.0
+    #user: "1000:1000"
+    ports:
+      - "8089:8089"
+    working_dir: /app
+    volumes:
+      - ../reports/mlruns:/mlruns
+      - ../reports/mlartifacts:/mlartifacts
+      - ../reports/mlflow.db:/mlflow.db
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 8089
+      --backend-store-uri sqlite:////app/reports/mlflow.db
+      --default-artifact-root file:///mlartifacts
+      --cors-allowed-origins "*"
+    #--backend-store-uri file:///mlruns
+    
+    #--default-artifact-root file:///mlartifacts
+
+  # 2. TensorBoard UI Server
+  tensorboard:
+    image: tensorflow/tensorflow:2.18.0
+    ports:
+      - "8191:8191"
+    volumes:
+      # This now reads the path from the .env file.
+      # If TENSORBOARD_LOG_DIR is not set, it defaults to './tensorboard_logs'.
+      - ${TENSORBOARD_LOG_DIR:-./tensorboard_logs}:/tensorboard_logs
+
+    command: >
+      tensorboard
+      --logdir /tensorboard_logs
+      --host 0.0.0.0
+      --port 8191
+
+  # 3. Optuna Dashboard Server
+  optuna:
+    image: ghcr.io/optuna/optuna-dashboard:latest
+    ports:
+      - "8192:8192"
+    volumes:
+      - ${OPTUNA_LOG_DIR}:/my_optimization.db
+    command: >
+      sqlite:////my_optimization.db
+      --host 0.0.0.0
+      --port 8192

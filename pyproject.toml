@@ -1,0 +1,64 @@
+[project]
+name = "template_development"
+version = "0.0.1"
+description = "Local configuration for testing the template repository"
+requires-python = ">=3.12"
+
+[tool.setuptools]
+packages = ["src"]
+
+[tool.project-tools]
+pipx_packages = [
+    "black",
+    "mypy",
+    "flake8",
+    "flake8-pyproject",
+    "isort",
+    "optuna-dashboard",
+    "jupyterlab",
+    "yq",
+    "autopep8",
+    "ruff",
+    "pytest",
+    "cookiecutter-data-science"
+    ]
+
+[tool.flake8]
+max-line-length = 159
+max-complexity = 10
+exclude = [
+    # No need to traverse our git directory
+    ".git",
+    # There's no value in checking cache directories
+    "__pycache__"
+]
+
+[tool.black]
+line-length = 159
+
+[tool.mypy]
+plugins = [
+  "pydantic.mypy"
+]
+[[tool.mypy.overrides]]
+module = ["requests.*", "google.cloud.*", "sklearn.*"]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 159
+[tool.ruff.lint]
+select = ["I"]
+[tool.ruff.lint.pycodestyle]
+max-line-length = 159
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["src"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:"
+]

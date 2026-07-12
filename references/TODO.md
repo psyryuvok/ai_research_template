@@ -1,0 +1,4 @@
+- [ ] Edit Dockerfile 
+- [ ] Edit setup.cfg
+- [ ] Edit pyproject.toml 
+- [ ] Edit noteboos/testing_programing.ipynb
