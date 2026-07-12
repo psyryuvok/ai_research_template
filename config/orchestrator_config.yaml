@@ -1,0 +1,13 @@
+# IMPORTANT: Every script executed by this orchestrator must use `argparse` (or a similar library) to parse arguments. 
+# If a script does not parse arguments, any arguments passed to it here will be silently ignored without throwing an error.
+scripts_to_run:
+  - name: "Script 1" 
+    script: "file.py"
+    args:
+      output_file: "output.json" # Script1 writes to this
+
+  - name: "Script 2"
+    script: "file2.py"
+    args:
+      input_file: "output.json"  # Script2 reads from script1's output
+      output_file: "output2.json" # Script2 writes to this
