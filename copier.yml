@@ -20,6 +20,7 @@ python_version:
   default: ">=3.12"
 _exclude:
   - "copier.yml"
+  - "pyproject.toml"
   - ".git"
   - ".venv"
   - "ai_research_template.egg-info"
