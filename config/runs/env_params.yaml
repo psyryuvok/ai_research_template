@@ -39,6 +39,6 @@ github:
   GIT_USERNAME: ""  # username of the user who has the repo
   GIT_REPOSITORY: ""
 output:
-  generate_files: False
+  generate_files: True
   generate_statistics: True
   save_images: True

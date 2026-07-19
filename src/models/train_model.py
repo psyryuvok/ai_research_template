@@ -26,6 +26,7 @@ class BaseOptunaKerasPipeline(abc.ABC):
         disable_randomness(self.config.repeatability)
         self.experiment_id = get_or_create_mflow_experiment(self.config.name)
         mlflow.set_experiment(experiment_id=self.experiment_id)
+        mlflow.enable_system_metrics_logging()
 
         self.runs_dir = f"./reports/runs/{self.config.name}/{self.study_name}"
         self.base_model_dir = f"./models/experimenting/{self.config.name}/{self.study_name}"

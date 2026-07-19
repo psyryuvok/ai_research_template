@@ -7,6 +7,7 @@ services:
       - "8089:8089"
     working_dir: /app
     volumes:
+      - ../reports:/app/reports
       - ../reports/mlruns:/mlruns
       - ../reports/mlartifacts:/mlartifacts
       - ../reports/mlflow.db:/mlflow.db
