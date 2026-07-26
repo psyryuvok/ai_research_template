@@ -1,0 +1,19 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install dependencies (only the lightweight edge ones) # TODO - make it more lightweight
+COPY requirements_edge.txt .
+RUN pip install --no-cache-dir -r requirements_edge.txt
+
+RUN mkdir -p src/features src/models models/production
+
+# TODO Copy only the files needed for edge inference
+COPY src src
+COPY requirements.txt requirements.txt
+COPY config/runs/env_params.yaml config/runs/env_params.yaml
+COPY models/production/ models/production/
+COPY edge_main.py .
+
+ENTRYPOINT ["python", "edge_main.py"]
+CMD ["--model_type", "tflite", "--model_path", "models/production/tf_model_int8.tflite"]

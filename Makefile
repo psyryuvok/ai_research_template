@@ -156,6 +156,33 @@ stop_vis:
 	echo "-> Stopping Docker Compose with services..."; \
 	docker compose -f $(COMPOSE_FILE) down
 
+
+DOCKER_IMAGE_NAME ?= edge-inference
+DOCKER_OUTPUT_DIR ?= build/docker_images
+ARCH_TAG ?= amd64
+
+## Create docker image & save it as file
+docker-build:
+	@echo "-> Creating output directory $(DOCKER_OUTPUT_DIR)"
+	@mkdir -p $(DOCKER_OUTPUT_DIR)
+	@echo "-> Building for amd64 (Linux/Ubuntu/Debian) architecture..."
+	docker build -t $(DOCKER_IMAGE_NAME):amd64 -f CI-CD/Dockerfile.edge .
+	@echo "-> Saving amd64 image to $(DOCKER_OUTPUT_DIR)/$(DOCKER_IMAGE_NAME)-amd64.tar"
+	docker save -o $(DOCKER_OUTPUT_DIR)/$(DOCKER_IMAGE_NAME)-amd64.tar $(DOCKER_IMAGE_NAME):amd64
+	@echo "-> Building for arm64 architecture (Requires Docker Buildx)..."
+	docker buildx build --platform linux/arm64 -t $(DOCKER_IMAGE_NAME):arm64 -f CI-CD/Dockerfile.edge --load .
+	@echo "-> Saving arm64 image to $(DOCKER_OUTPUT_DIR)/$(DOCKER_IMAGE_NAME)-arm64.tar"
+	docker save -o $(DOCKER_OUTPUT_DIR)/$(DOCKER_IMAGE_NAME)-arm64.tar $(DOCKER_IMAGE_NAME):arm64
+
+## Run docker image 10 times for each model type(onnx, tflite) (Args: DOCKER_IMAGE_NAME=edge-inference ARCH_TAG=amd64)
+docker-benchmark:
+	@echo "-> Benchmarking TFLite..."
+	$(PYTHON_INTERPRETER) pipelines/scripts/benchmark_edge.py --image $(DOCKER_IMAGE_NAME):$(ARCH_TAG) --model_type tflite --model_path models/production/tf_model_int8.tflite --runs 10
+	@echo "-> Benchmarking ONNX..."
+	$(PYTHON_INTERPRETER) pipelines/scripts/benchmark_edge.py --image $(DOCKER_IMAGE_NAME):$(ARCH_TAG) --model_type onnx --model_path models/production/tf_model.onnx --runs 10
+
+
+
 # This is the new rule that creates the venv.
 # It is a FILE-BASED rule, not a phony one.
 $(PYTHON_INTERPRETER):

@@ -8,6 +8,11 @@ db:
   password: p
   port: not_a_number
   username: u
+edge_deployment:
+  calibration_samples: 100
+  export_onnx: false
+  export_tflite: false
+  quantization: int8
 files:
   data_path: ''
 github:

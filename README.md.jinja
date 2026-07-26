@@ -15,8 +15,11 @@
     ├── LICENSE
     ├── Makefile              <- Makefile with commands like `make data` or `make train`
     ├── README.md             <- The top-level README for developers using this project.
+    ├── edge_main_template.py <- Template for creating edge inference main scripts
     │
     ├── archive               <- Folders/files which aren't important anymore but kept for reference
+    │
+    ├── build                 <- Compiled outputs, binaries, or packaged edge artifacts
     │
     ├── CI-CD                 <- Scripts for automating
     │
@@ -49,6 +52,7 @@
     │
     ├── pipelines             <- Scripts for end-to-end data preparing or model training 
     │                         (Pipelines it might be removed because it overlaps with CI-CD and src/data/make_dataset.py)
+    │   └── scripts           <- Standalone scripts, such as benchmarking utilities (e.g. benchmark_edge.py)
     ├── references            <- Data dictionaries, manuals, and all other explanatory materials.
     │
     ├── reports               <- Generated analysis as HTML, PDF, LaTeX, etc.

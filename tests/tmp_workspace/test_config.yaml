@@ -9,6 +9,11 @@ db:
   password: yaml_password
   port: 9090
   username: yaml_user
+edge_deployment:
+  calibration_samples: 100
+  export_onnx: false
+  export_tflite: false
+  quantization: int8
 features:
   new_ui: true
 files:

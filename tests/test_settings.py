@@ -72,6 +72,7 @@ def yaml_config_file(workspace_tmp_path):
             },
             "epochs": 1,
         },
+        "edge_deployment": {"export_tflite": False, "export_onnx": False, "quantization": "int8", "calibration_samples": 100},
         "github": {"MY_GOOGLE_DRIVE_PATH": "", "GIT_USERNAME": "", "GIT_REPOSITORY": ""},
         "output": {"generate_files": False, "generate_statistics": False, "save_images": False},
         "db": {"host": "yaml_host", "port": 9090, "username": "yaml_user", "password": "yaml_password", "data": "yaml_data"},
@@ -144,6 +145,10 @@ def test_missing_yaml_file(clean_env):
     os.environ["MODEL_SEIZURE___OPTUNA_PARAMETERS___N_TRIALS"] = "1"
     os.environ["MODEL_SEIZURE___OPTUNA_PARAMETERS___TIMEOUT"] = "1"
     os.environ["MODEL_SEIZURE___EPOCHS"] = "1"
+    os.environ["EDGE_DEPLOYMENT___EXPORT_TFLITE"] = "False"
+    os.environ["EDGE_DEPLOYMENT___EXPORT_ONNX"] = "False"
+    os.environ["EDGE_DEPLOYMENT___QUANTIZATION"] = "int8"
+    os.environ["EDGE_DEPLOYMENT___CALIBRATION_SAMPLES"] = "100"
     os.environ["GITHUB___MY_GOOGLE_DRIVE_PATH"] = ""
     os.environ["GITHUB___GIT_USERNAME"] = ""
     os.environ["GITHUB___GIT_REPOSITORY"] = ""
@@ -185,6 +190,7 @@ def test_validation_error(clean_env, yaml_config_file, workspace_tmp_path):
             },
             "epochs": 1,
         },
+        "edge_deployment": {"export_tflite": False, "export_onnx": False, "quantization": "int8", "calibration_samples": 100},
         "github": {"MY_GOOGLE_DRIVE_PATH": "", "GIT_USERNAME": "", "GIT_REPOSITORY": ""},
         "output": {"generate_files": False, "generate_statistics": False, "save_images": False},
         "db": {

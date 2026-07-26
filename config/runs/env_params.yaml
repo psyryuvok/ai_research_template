@@ -38,6 +38,11 @@ github:
   MY_GOOGLE_DRIVE_PATH: ""  # path to your project on Google Drive
   GIT_USERNAME: ""  # username of the user who has the repo
   GIT_REPOSITORY: ""
+edge_deployment:
+  export_tflite: true
+  export_onnx: true
+  quantization: "int8" # options: "int8", "fp16", "none"
+  calibration_samples: 100 # Number of samples for int8 calibration
 output:
   generate_files: True
   generate_statistics: True

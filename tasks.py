@@ -260,3 +260,43 @@ def stop_vis(c):
     setup_docker_env()
     print("-> Stopping Docker Compose with services...")
     c.run(f"docker compose -f {COMPOSE_FILE} down", echo=True, pty=True)
+
+
+# =============================================================================
+# DOCKER EDGE IMAGE TASKS
+# =============================================================================
+@task
+def docker_build(c, image_name="tuh-edge-inference", output_dir="build/docker_images"):
+    """Build Docker images for edge inference (amd64 & arm64) and save them to output_dir"""
+    output_path = PROJECT_DIR / output_dir
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    print("-> Building for amd64 (Linux/Ubuntu/Debian) architecture...")
+    c.run(f"docker build -t {image_name}:amd64 -f CI-CD/Dockerfile.edge .", echo=True, pty=True)
+    print(f"-> Saving amd64 image to {output_path / f'{image_name}-amd64.tar'}")
+    c.run(f"docker save -o {output_path / f'{image_name}-amd64.tar'} {image_name}:amd64", echo=True, pty=True)
+
+    print("-> Building for arm64 architecture (Requires Docker Buildx)...")
+    c.run(f"docker buildx build --platform linux/arm64 -t {image_name}:arm64 -f CI-CD/Dockerfile.edge --load .", echo=True, pty=True)
+    print(f"-> Saving arm64 image to {output_path / f'{image_name}-arm64.tar'}")
+    c.run(f"docker save -o {output_path / f'{image_name}-arm64.tar'} {image_name}:arm64", echo=True, pty=True)
+
+
+@task
+def docker_benchmark(c, image="tuh-edge-inference", arch="amd64", runs=10):
+    """Run docker image X times for each model type (onnx, tflite) for benchmarking"""
+    full_image = f"{image}:{arch}"
+
+    print("-> Benchmarking TFLite...")
+    c.run(
+        f"{PYTHON} pipelines/scripts/benchmark_edge.py --image {full_image} --model_type tflite --model_path models/production/tf_model_int8.tflite --runs {runs}",
+        echo=True,
+        pty=True,
+    )
+
+    print("\n-> Benchmarking ONNX...")
+    c.run(
+        f"{PYTHON} pipelines/scripts/benchmark_edge.py --image {full_image} --model_type onnx --model_path models/production/tf_model.onnx --runs {runs}",
+        echo=True,
+        pty=True,
+    )

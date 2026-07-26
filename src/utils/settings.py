@@ -76,6 +76,13 @@ class ModelConfig(BaseModel):
     early_stop: int
 
 
+class EdgeDeployment(BaseModel):
+    export_tflite: bool = False
+    export_onnx: bool = False
+    quantization: str = "int8"
+    calibration_samples: int = 100
+
+
 class GithubConfig(BaseModel):
     MY_GOOGLE_DRIVE_PATH: str
     GIT_USERNAME: str
@@ -116,6 +123,7 @@ class Settings(BaseSettings):
     data: DataConfig
     model: ModelConfig
     model_seizure: ModelSeizureConfig
+    edge_deployment: EdgeDeployment
     github: GithubConfig
     output: OutputConfig
     repeatability: RepeatabilityConfig = Field(default_factory=RepeatabilityConfig)

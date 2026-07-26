@@ -98,4 +98,6 @@ target/
 
 # Exclude big models
 /models/experimenting/
+/models/production/
 /reports
+/build/
