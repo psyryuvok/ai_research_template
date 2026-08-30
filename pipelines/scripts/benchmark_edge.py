@@ -10,6 +10,10 @@ import time
 import psutil
 from codecarbon import EmissionsTracker
 
+from src.utils.logging_config import get_file_logger
+
+logger = get_file_logger(__name__, "benchmark")
+
 
 class SystemMonitor:
     def __init__(self):
@@ -79,9 +83,9 @@ def main():
     args = parser.parse_args()
 
     durations = []
-    print(f"Benchmarking {args.model_type.upper()} ({args.runs} runs)...")
-    print(f"Using image: {args.image}")
-    print("-" * 50)
+    logger.info(f"Benchmarking {args.model_type.upper()} ({args.runs} runs)...")
+    logger.info(f"Using image: {args.image}")
+    logger.info("-" * 50)
 
     command = ["docker", "run", "--rm", args.image, "--model_type", args.model_type, "--model_path", args.model_path]
 
@@ -100,15 +104,15 @@ def main():
 
             if duration is not None:
                 durations.append(duration)
-                print(f"  Run {i:02d}: {duration:.4f} seconds")
+                logger.info(f"  Run {i:02d}: {duration:.4f} seconds")
             else:
-                print(f"  Run {i:02d}: Failed to parse duration. Output snippet:")
+                logger.info(f"  Run {i:02d}: Failed to parse duration. Output snippet:")
                 # Print the last 5 lines of output to help debug why parsing failed
-                print("\n".join(output.splitlines()[-5:]))
+                logger.info("\n".join(output.splitlines()[-5:]))
 
         except subprocess.CalledProcessError as e:
-            print(f"  Run {i:02d}: FAILED")
-            print(e.stderr)
+            logger.info(f"  Run {i:02d}: FAILED")
+            logger.info(e.stderr)
 
     if durations:
         sys_metrics = monitor.stop()
@@ -118,32 +122,32 @@ def main():
 
         avg = statistics.mean(durations)
         std_dev = statistics.stdev(durations) if len(durations) > 1 else 0.0
-        print("-" * 50)
-        print(f"RESULTS FOR {args.model_type.upper()}")
-        print("-" * 50)
-        print(f"Total Successful Runs: {len(durations)}")
-        print(f"Average Time: {avg:.4f} seconds")
-        print(f"Std Dev:      {std_dev:.4f} seconds")
-        print(f"Min Time:     {min(durations):.4f} seconds")
-        print(f"Max Time:     {max(durations):.4f} seconds")
+        logger.info("-" * 50)
+        logger.info(f"RESULTS FOR {args.model_type.upper()}")
+        logger.info("-" * 50)
+        logger.info(f"Total Successful Runs: {len(durations)}")
+        logger.info(f"Average Time: {avg:.4f} seconds")
+        logger.info(f"Std Dev:      {std_dev:.4f} seconds")
+        logger.info(f"Min Time:     {min(durations):.4f} seconds")
+        logger.info(f"Max Time:     {max(durations):.4f} seconds")
 
         if sys_metrics:
-            print("-" * 50)
-            print("SYSTEM METRICS (Host)")
-            print(f"Avg CPU Usage: {sys_metrics['avg_cpu']:.2f}%")
-            print(f"Max CPU Usage: {sys_metrics['max_cpu']:.2f}%")
-            print(f"Avg RAM Usage: {sys_metrics['avg_ram']:.2f}%")
-            print(f"Max RAM Usage: {sys_metrics['max_ram']:.2f}%")
+            logger.info("-" * 50)
+            logger.info("SYSTEM METRICS (Host)")
+            logger.info(f"Avg CPU Usage: {sys_metrics['avg_cpu']:.2f}%")
+            logger.info(f"Max CPU Usage: {sys_metrics['max_cpu']:.2f}%")
+            logger.info(f"Avg RAM Usage: {sys_metrics['avg_ram']:.2f}%")
+            logger.info(f"Max RAM Usage: {sys_metrics['max_ram']:.2f}%")
 
         if emissions_data is not None:
-            print("-" * 50)
-            print("CODECARBON EMISSIONS")
-            print(f"Total Emissions: {emissions_data:.8f} kgCO2eq")
+            logger.info("-" * 50)
+            logger.info("CODECARBON EMISSIONS")
+            logger.info(f"Total Emissions: {emissions_data:.8f} kgCO2eq")
             if hasattr(tracker, "_total_energy"):
                 energy = tracker._total_energy.kWh if hasattr(tracker._total_energy, "kWh") else float(tracker._total_energy)
-                print(f"Total Energy:    {energy:.8f} kWh")
+                logger.info(f"Total Energy:    {energy:.8f} kWh")
 
-        print("-" * 50)
+        logger.info("-" * 50)
 
 
 if __name__ == "__main__":

@@ -7,8 +7,11 @@ import tensorflow as tf
 from optuna.integration.mlflow import MLflowCallback
 from optuna.integration.tensorboard import TensorBoardCallback
 
+from src.utils.logging_config import get_file_logger
 from src.utils.optuna_utils import callback_with_cleanup, final_cleanup, log_optuna_plots
 from src.utils.utils import disable_randomness, get_or_create_mflow_experiment, setup_tracker
+
+logger = get_file_logger(__name__, "train")
 
 
 class BaseOptunaKerasPipeline(abc.ABC):
@@ -32,6 +35,19 @@ class BaseOptunaKerasPipeline(abc.ABC):
         self.base_model_dir = f"./models/experimenting/{self.config.name}/{self.study_name}"
         os.makedirs(self.runs_dir, exist_ok=True)
         os.makedirs(self.base_model_dir, exist_ok=True)
+
+    def get_backup_dir_by_lineage(self, trial: optuna.Trial) -> str:
+        from optuna.trial import TrialState
+
+        past_trials = trial.study.get_trials(states=[TrialState.FAIL, TrialState.COMPLETE, TrialState.PRUNED])
+
+        original_number = trial.number
+        for t in past_trials:
+            if t.params == trial.params and len(trial.params) > 0:
+                original_number = t.number
+                break
+
+        return os.path.join(self.base_model_dir, f"T-{original_number}_backup")
 
     @abc.abstractmethod
     def get_datasets(self):
@@ -68,10 +84,14 @@ class BaseOptunaKerasPipeline(abc.ABC):
         train_fit = train_batched.map(remove_metadata, num_parallel_calls=tf.data.AUTOTUNE)
         dev_fit = dev_batched.map(remove_metadata, num_parallel_calls=tf.data.AUTOTUNE)
 
+        # Resolve the correct backup directory for these parameters
+        backup_dir = self.get_backup_dir_by_lineage(trial)
+
         # 2. Callbacks
         callbacks = [
             tf.keras.callbacks.EarlyStopping(monitor=self.metric_to_track, patience=20, mode="max", restore_best_weights=True),
             tf.keras.callbacks.ReduceLROnPlateau(monitor=self.metric_to_track, factor=0.5, patience=10, mode="max", min_lr=1e-8),
+            tf.keras.callbacks.BackupAndRestore(backup_dir=backup_dir),
         ]
 
         # 3. Train
@@ -121,13 +141,41 @@ class BaseOptunaKerasPipeline(abc.ABC):
                 sampler=optuna.samplers.TPESampler(seed=self.config.repeatability.seed),
             )
 
+            # Clean up zombie trials from previous crashes
+            from optuna.trial import TrialState
+
+            zombie_trials = [t for t in study.trials if t.state == TrialState.RUNNING]
+            for t in zombie_trials:
+                study.tell(t.number, state=TrialState.FAIL)
+                study.enqueue_trial(t.params)
+                logger.info(f"Cleaned up and re-enqueued trial {t.number}")
+
+            # Clean up MLflow runs stuck in RUNNING
+            client = mlflow.tracking.MlflowClient()
+            active_runs = client.search_runs(experiment_ids=[self.experiment_id], filter_string="status = 'RUNNING'")
+            current_run = mlflow.active_run()
+            current_run_id = current_run.info.run_id if current_run else None
+            for run in active_runs:
+                if run.info.run_id != current_run_id:
+                    client.set_terminated(run.info.run_id, status="FAILED")
+                    logger.info(f"Cleaned up orphaned MLflow run {run.info.run_id}")
+
             tb_callback = TensorBoardCallback(f"./reports/tensorboard/{self.config.name}/logs_optuna/{self.study_name}", metric_name=self.metric_to_track)
 
             @mlflow_callback.track_in_mlflow()
             def objective_wrapper(t):
                 return self.objective(t, train_dataset, dev_dataset, eval_dataset, metadata)
 
-            study.optimize(objective_wrapper, n_trials=n_trials, callbacks=[callback_with_cleanup, tb_callback, mlflow_callback], gc_after_trial=True)
+            completed_trials = len([t for t in study.trials if t.state in [TrialState.COMPLETE, TrialState.PRUNED]])
+            remaining_trials = max(0, n_trials - completed_trials)
+
+            if remaining_trials > 0:
+                logger.info(f"Resuming study {self.study_name}. {completed_trials}/{n_trials} completed. Running {remaining_trials} more trials.")
+                study.optimize(
+                    objective_wrapper, n_trials=remaining_trials, callbacks=[callback_with_cleanup, tb_callback, mlflow_callback], gc_after_trial=True
+                )
+            else:
+                logger.info(f"Study {self.study_name} already reached {n_trials} completed trials. Skipping optimization.")
 
             # Save the very best model to a clear path as well
             best_model_path_from_study = study.user_attrs.get("best_model_path")

@@ -40,7 +40,7 @@ def setup_docker_env():
         run_name = params.get("name", "default_run")
         study_name = params.get("model_seizure", {}).get("optuna_parameters", {}).get("study_name", "default_study")
 
-    optuna_dir = PROJECT_DIR / f"reports/runs/{run_name}/{study_name}/optuna.db"
+    optuna_dir = PROJECT_DIR / f"reports/runs/{run_name}/{study_name}"
     tb_dir = PROJECT_DIR / f"reports/tensorboard/{run_name}/logs_optuna/{study_name}"
 
     # Export to environment so 'docker compose' inherits them

@@ -206,7 +206,7 @@ define SETUP_DOCKER_ENV
 	echo "   -> Name from YAML:       '$$RUN_NAME'"; \
 	echo "   -> Study Name from YAML:   '$$STUDY_NAME'"; \
 	\
-	export OPTUNA_LOG_DIR="$(PROJECT_DIR)/reports/runs/$$RUN_NAME/$$STUDY_NAME/optuna.db"; \
+	export OPTUNA_LOG_DIR="$(PROJECT_DIR)/reports/runs/$$RUN_NAME/$$STUDY_NAME"; \
 	export TENSORBOARD_LOG_DIR="$(PROJECT_DIR)/reports/tensorboard/$$RUN_NAME/logs_optuna/$$STUDY_NAME"; \
 	\
 	echo "      OPTUNA_LOG_DIR    = $$OPTUNA_LOG_DIR"; \

@@ -1,7 +1,10 @@
 import os
 
+import matplotlib
 import matplotlib.pyplot as plt
 import mlflow
+
+matplotlib.use("Agg")
 import numpy as np
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 
