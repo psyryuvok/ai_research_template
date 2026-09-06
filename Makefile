@@ -129,18 +129,18 @@ clean:
 # Development Tasks                                                                       #
 #################################################################################
 
-## Lint using mypy and flake8
+## Lint using ruff, mypy, and sqlfluff
 lint:
 	@echo "-> Running linter..."
 	ruff check .
 	mypy --python-executable $(PYTHON_INTERPRETER) -p $(PACKAGE_NAME)
-#flake8 src
-## Format using ruff
+	$(PYTHON_INTERPRETER) -m sqlfluff lint src/
+
+## Format using ruff and sqlfluff
 format:
 	@echo "-> Running formatters..."
 	ruff format .
-#black .
-#isort .
+	$(PYTHON_INTERPRETER) -m sqlfluff fix src/
 
 ## Deploy visualization servers: tensorboard, optuna, mlflow
 deploy_vis:

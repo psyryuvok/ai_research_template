@@ -7,11 +7,11 @@ import sys
 from datetime import datetime, timezone
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
-from typing import Any, override
+from typing import Any, ClassVar, override
 
 try:
-    import google.cloud.logging
-    from google.cloud.logging.handlers import CloudLoggingHandler
+    import google.cloud.logging  # type: ignore
+    from google.cloud.logging.handlers import CloudLoggingHandler  # type: ignore
 
     GCP_LIB_AVAILABLE = True
 except (ImportError, Exception):
@@ -67,7 +67,7 @@ class JsonFormatter(logging.Formatter):
     CYAN = "\x1b[36;20m"
     RESET = "\x1b[0m"
 
-    LEVEL_COLORS = {"DEBUG": GREY, "INFO": GREEN, "WARNING": YELLOW, "ERROR": RED, "CRITICAL": BOLD_RED}
+    LEVEL_COLORS: ClassVar[dict[str, str]] = {"DEBUG": GREY, "INFO": GREEN, "WARNING": YELLOW, "ERROR": RED, "CRITICAL": BOLD_RED}
 
     def __init__(self, use_color: bool = False, global_labels: dict[str, Any] | None = None, **kwargs: Any):
         """
@@ -228,7 +228,7 @@ def get_project_root() -> Path:
     # Root markers to look for
     root_markers = ("pyproject.toml", ".git", "requirements.txt", "Makefile")
 
-    for parent in [current_path] + list(current_path.parents):
+    for parent in [current_path, *list(current_path.parents)]:
         if any((parent / marker).exists() for marker in root_markers):
             project_root = parent.resolve()
             break

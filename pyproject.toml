@@ -4,6 +4,41 @@ version = "0.0.1"
 description = "Local configuration for testing the template repository"
 requires-python = ">=3.12"
 
+dependencies = [
+"pydantic_settings",
+"codecarbon>=3.2.0",
+"onnxruntime",
+"optuna",
+"mlflow",
+"invoke",
+"tensorflow"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pytest-mock",
+    "pytest-asyncio",
+    "mypy",
+    "ruff",
+    "sqlfluff",
+
+    # --- Mypy Type Stubs ---
+    "pandas-stubs",
+    "types-PyYAML",
+    "types-Pygments",
+    "types-cffi",
+    "types-colorama",
+    "types-jsonschema",
+    "types-protobuf",
+    "types-pyasn1",
+    "types-python-dateutil",
+    "types-shapely",
+    "types-tqdm",
+    "types-tensorflow",
+    ]
+
 [tool.setuptools]
 packages = ["src"]
 
@@ -47,7 +82,7 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 159
 [tool.ruff.lint]
-select = ["I"]
+select = ["E", "F", "I", "RUF"] 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 159
 
@@ -62,3 +97,9 @@ exclude_lines = [
     "pragma: no cover",
     "if __name__ == .__main__.:"
 ]
+
+[tool.sqlfluff.core]
+dialect = "bigquery"
+
+[tool.sqlfluff.indentation]
+tab_space_size = 2

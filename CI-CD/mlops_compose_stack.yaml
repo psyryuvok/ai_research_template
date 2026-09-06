@@ -44,8 +44,8 @@ services:
     ports:
       - "8192:8192"
     volumes:
-      - ${OPTUNA_LOG_DIR}:/my_optimization.db
+      - ${OPTUNA_LOG_DIR}:/optuna_logs
     command: >
-      sqlite:////my_optimization.db
+      sqlite:////optuna_logs.db
       --host 0.0.0.0
       --port 8192

@@ -3,7 +3,7 @@ import tomllib
 from pathlib import Path
 
 import yaml
-from invoke import task
+from invoke import Exit, task
 
 # =============================================================================
 # GLOBALS & PATHS
@@ -183,17 +183,22 @@ def clean(c):
 
 @task
 def lint(c):
-    """Lint using ruff and mypy"""
+    """Lint using ruff, mypy, and sqlfluff"""
     print("-> Running linter...")
-    c.run("ruff check .", echo=True, pty=True)
-    c.run(f"mypy --python-executable {PYTHON} -p {PACKAGE_NAME}", echo=True, pty=True)
+    ruff_res = c.run("ruff check .", echo=True, pty=True, warn=True)
+    mypy_res = c.run(f"mypy --python-executable {PYTHON} -p {PACKAGE_NAME}", echo=True, pty=True, warn=True)
+    sql_res = c.run(f"{PYTHON} -m sqlfluff lint src/", echo=True, pty=True, warn=True)
+
+    if any(res.failed for res in [ruff_res, mypy_res, sql_res]):
+        raise Exit("Linting failed. Please fix the errors above.", code=1)
 
 
 @task
 def format(c):
-    """Format using ruff"""
+    """Format using ruff and sqlfluff"""
     print("-> Running formatters...")
-    c.run("ruff format .", echo=True, pty=True)
+    c.run("ruff format .", echo=True, pty=True, warn=True)
+    c.run(f"{PYTHON} -m sqlfluff fix src/", echo=True, pty=True, warn=True)
 
 
 # =============================================================================
@@ -289,7 +294,8 @@ def docker_benchmark(c, image="tuh-edge-inference", arch="amd64", runs=10):
 
     print("-> Benchmarking TFLite...")
     c.run(
-        f"{PYTHON} pipelines/scripts/benchmark_edge.py --image {full_image} --model_type tflite --model_path models/production/tf_model_int8.tflite --runs {runs}",
+        f"{PYTHON} pipelines/scripts/benchmark_edge.py --image {full_image} --model_type tflite "
+        f"--model_path models/production/tf_model_int8.tflite --runs {runs}",
         echo=True,
         pty=True,
     )

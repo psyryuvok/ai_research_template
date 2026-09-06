@@ -4,7 +4,6 @@ import shutil
 import mlflow
 import optuna
 import optuna.visualization as vis
-from codecarbon import OfflineEmissionsTracker
 from optuna.importance import FanovaImportanceEvaluator, MeanDecreaseImpurityImportanceEvaluator, PedAnovaImportanceEvaluator
 
 from src.utils.logging_config import get_file_logger

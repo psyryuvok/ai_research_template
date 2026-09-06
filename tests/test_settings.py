@@ -1,5 +1,4 @@
 import os
-import shutil
 from pathlib import Path
 
 import pytest
@@ -8,7 +7,7 @@ from pydantic import ValidationError
 
 # Import the refactored Settings class from your main file
 # Assuming your file is named 'config.py'
-from src.utils.settings import DatabaseConfig, Settings
+from src.utils.settings import Settings
 
 # --- Fixtures ---
 

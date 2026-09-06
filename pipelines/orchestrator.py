@@ -33,7 +33,7 @@ def run_script(script_path, script_args_dict):
     try:
         # capture_output=True can be used to get stdout/stderr if needed
         # check=True will raise CalledProcessError if the script exits with a non-zero code
-        result = subprocess.run(command, check=True)
+        subprocess.run(command, check=True)
         logger.info(f"[Orchestrator] Successfully executed {script_path}")
         return True
     except subprocess.CalledProcessError as e:
@@ -75,7 +75,7 @@ def main():
 
         if not run_script(script_path, script_args):
             logger.error(f"[Orchestrator] Pipeline execution failed at {step_name}.")
-            logger.error(f"[Orchestrator] Stopping pipeline execution.")
+            logger.error("[Orchestrator] Stopping pipeline execution.")
             break  # Stop pipeline on script failure
     else:  # This 'else' belongs to the 'for' loop, executes if the loop completed without 'break'
         logger.info("\n[Orchestrator] Pipeline execution completed successfully.")
